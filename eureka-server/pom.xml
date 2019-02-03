@@ -18,6 +18,7 @@
     </parent>
 
     <dependencies>
+        <!--加入的 spring-cloud-starter-eureka-server 会自动引入 spring-boot-starter-web -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>

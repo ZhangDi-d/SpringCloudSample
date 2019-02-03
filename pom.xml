@@ -17,8 +17,9 @@
     </parent>
 
     <modules>
-        <module>euraka-server</module>
+        <module>eureka-server</module>
         <module>service-hello</module>
+        <module>service-ribbon</module>
     </modules>
 
     <properties>
