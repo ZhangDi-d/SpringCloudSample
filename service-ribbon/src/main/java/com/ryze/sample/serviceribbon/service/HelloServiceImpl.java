@@ -1,5 +1,6 @@
 package com.ryze.sample.serviceribbon.service;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -13,7 +14,12 @@ public class HelloServiceImpl implements HelloService {
     RestTemplate restTemplate;
 
     @Override
+    @HystrixCommand(fallbackMethod = "helloError") //在ribbon中使用断路器
     public String helloService(String name) {
         return restTemplate.getForObject("http://service-hello/hello?name="+name,String.class);
+    }
+
+    public String helloError(String name) {
+        return "hello,"+name+",sorry,error!";
     }
 }
