@@ -10,7 +10,16 @@ Feign是一个声明式的伪Http客户端，它使得写Http客户端变得更�
 
 简而言之：
 
-Feign 采用的是基于接口的注解
-Feign 整合了ribbon，具有负载均衡的能力
-整合了Hystrix，具有熔断的能力
+1.Feign 采用的是基于接口的注解
+2.Feign 整合了ribbon，具有负载均衡的能力
+3.整合了Hystrix，具有熔断的能力
 ----
+
+## Hystrix
+1.ribbon中使用断路器:
+
+1.@EnableHystrix (启动类上加)  
+2.@HystrixCommand(fallbackMethod = "失败时调用方法")(具体方法上加)
+
+2.feign中使用断路器:
+Feign是自带断路器的，在D版本的Spring Cloud之后，它没有默认打开.打开:feign.hystrix.enabled=true
