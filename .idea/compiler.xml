@@ -10,6 +10,7 @@
         <module name="service-feign" />
         <module name="service-hello" />
         <module name="service-ribbon" />
+        <module name="service-zuul" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
