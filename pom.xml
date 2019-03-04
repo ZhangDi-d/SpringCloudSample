@@ -20,6 +20,7 @@
         <module>eureka-server</module>
         <module>service-hello</module>
         <module>service-ribbon</module>
+        <module>service-feign</module>
     </modules>
 
     <properties>

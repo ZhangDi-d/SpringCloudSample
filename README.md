@@ -2,7 +2,7 @@
 A simple project of springcloud self-learning.
 
 ## 服务消费的两种方式
-1.RestTemplate+Ribbon
+1.RestTemplate+Ribbon 
 2.Feign去消费服务。
 
 ## Feign(声明式服务调用)
