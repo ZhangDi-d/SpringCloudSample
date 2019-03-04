@@ -17,3 +17,5 @@ zuul:
     api-b:
           path: /api-b/**
           serviceId: service-feign
+logging:
+  config: classpath: logback-boot.xml
