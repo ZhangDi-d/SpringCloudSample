@@ -14,7 +14,7 @@ public class HelloServiceImpl implements HelloService {
     RestTemplate restTemplate;
 
     @Override
-    @HystrixCommand(fallbackMethod = "helloError") //在ribbon中使用断路器
+    @HystrixCommand(fallbackMethod = "helloError") //在ribbon中使用断路器,该注解对该方法创建了熔断器的功能，并指定了fallbackMethod熔断方法
     public String helloService(String name) {
         return restTemplate.getForObject("http://service-hello/hello?name="+name,String.class);
     }
