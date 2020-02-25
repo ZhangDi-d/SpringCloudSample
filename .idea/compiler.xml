@@ -6,15 +6,46 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="Test1" />
+        <module name="sample" />
         <module name="eureka-server" />
+        <module name="demo-biz-module1" />
+        <module name="hrserver" />
         <module name="service-feign" />
         <module name="service-hello" />
+        <module name="demo-main" />
+        <module name="spring-boot-mp-common" />
         <module name="service-ribbon" />
         <module name="service-zuul" />
+        <module name="spring-boot-mp-shiro" />
+        <module name="spring-boot-shiro" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="cpicauto-common-server" target="1.8" />
+      <module name="cpicauto-daemon-service" target="1.8" />
+      <module name="cpicauto-dipatch-service" target="1.8" />
+      <module name="cpicauto-fastdfs-service" target="1.8" />
+      <module name="cpicauto-frontend-service" target="1.8" />
+      <module name="cpicauto-gateway-service" target="1.8" />
+      <module name="cpicauto-monitor-service" target="1.8" />
+      <module name="cpicauto-regdis-service" target="1.8" />
+      <module name="CpicAutoService" target="1.8" />
       <module name="euraka-server" target="1.8" />
+      <module name="javaee" target="1.8" />
+      <module name="spring-boot-mp-parent" target="1.8" />
+      <module name="springboot_shiro" target="1.8" />
+      <module name="Test4" target="1.5" />
     </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="eureka-server" options="-parameters" />
+      <module name="hrserver" options="-parameters" />
+      <module name="service-feign" options="-parameters" />
+      <module name="service-hello" options="-parameters" />
+      <module name="service-ribbon" options="-parameters" />
+      <module name="service-zuul" options="-parameters" />
+    </option>
   </component>
 </project>

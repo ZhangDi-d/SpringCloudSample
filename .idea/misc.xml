@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="FrameworkDetectionExcludesConfiguration">
+    <file type="web" url="file://$PROJECT_DIR$/../SSMP/demo-biz-module1" />
+    <file type="web" url="file://$PROJECT_DIR$/../SSMP/demo-main" />
+  </component>
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
@@ -10,7 +14,28 @@
         <option value="$PROJECT_DIR$/service-ribbon/pom.xml" />
         <option value="$PROJECT_DIR$/service-feign/pom.xml" />
         <option value="$PROJECT_DIR$/service-zuul/pom.xml" />
+        <option value="$PROJECT_DIR$/../JavaEESample/Test1/pom.xml" />
+        <option value="$PROJECT_DIR$/../SpringBoot/springboot_shiro/pom.xml" />
+        <option value="$PROJECT_DIR$/../SSMP/pom.xml" />
+        <option value="$PROJECT_DIR$/../spring-boot-examples/spring-boot-shiro/pom.xml" />
+        <option value="$PROJECT_DIR$/../SpringBootSample/springboot_shiro/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/pom.xml" />
+        <option value="$PROJECT_DIR$/../vhr-master/hrserver/pom.xml" />
       </list>
+    </option>
+    <option name="ignoredFiles">
+      <set>
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-common-server/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-daemon-service/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-dipatch-service/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-fastdfs-service/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-frontend-service/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-gateway-service/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-monitor-service/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-regdis-service/pom.xml" />
+        <option value="$USER_HOME$/Desktop/source/CpicAutoService/pom.xml" />
+        <option value="$PROJECT_DIR$/../SSMP/pom.xml" />
+      </set>
     </option>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="false" project-jdk-name="1.8 (1)" project-jdk-type="JavaSDK">
