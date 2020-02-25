@@ -1,7 +1,8 @@
 package com.ryze.sample.servicefeign.controller;
 
-import com.netflix.discovery.converters.Auto;
 import com.ryze.sample.servicefeign.service.SchedualServiceHello;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -12,13 +13,18 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 public class HelloController {
-    // //编译器报错，无视。 因为这个Bean是在程序启动的时候注入的，编译器感知不到，所以报错。
+    private static final Logger logger = LoggerFactory.getLogger(HelloController.class);
+
+    //编译器报错，无视。 因为这个Bean是在程序启动的时候注入的，编译器感知不到，所以报错。
     @Autowired
     SchedualServiceHello schedualServiceHello;
 
     //必须加上@RequestParam(value = "name"),否则可能会失败
     @GetMapping("/hello")
-    public String sayHello(@RequestParam String name){
-        return schedualServiceHello.sayHiFromClientOne(name);
+    public String sayHello(@RequestParam String name) {
+        logger.info("feign 调用hello接口 begin...");
+        String hi = schedualServiceHello.sayHiFromClientOne(name);
+        logger.info("feign 调用hello接口 end...");
+        return hi;
     }
 }

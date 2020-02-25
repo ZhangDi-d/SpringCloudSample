@@ -1,6 +1,8 @@
 package com.ryze.sample.servicefeign.fallback;
 
 import com.ryze.sample.servicefeign.service.SchedualServiceHello;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -9,8 +11,11 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SchedualServiceHelloHystric implements SchedualServiceHello {
+    private static final Logger logger = LoggerFactory.getLogger(SchedualServiceHelloHystric.class);
+
     @Override
     public String sayHiFromClientOne(String name) {
-        return "feign hystrix ==> sorry "+name;
+        logger.error("sayHiFromClientOne 调用异常...");
+        return "feign hystrix ==> sorry " + name;
     }
 }

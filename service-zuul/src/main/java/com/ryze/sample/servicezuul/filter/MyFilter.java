@@ -6,9 +6,7 @@ import com.netflix.zuul.exception.ZuulException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
 
 /**
  * Created by xueLai on 2019/3/4.
@@ -53,10 +51,10 @@ public class MyFilter extends ZuulFilter {
             log.warn("token is empty");
             context.setSendZuulResponse(false);
             context.setResponseStatusCode(401);
-                try {
-                    context.getResponse().getWriter().write("token is empty");
-                } catch (Exception e) {
-                }
+            try {
+                context.getResponse().getWriter().write("token is empty");
+            } catch (Exception e) {
+            }
             return null;
         }
         return null;

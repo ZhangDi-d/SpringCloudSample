@@ -23,7 +23,7 @@
             <fileNamePattern>log/sys.%d.%i.log</fileNamePattern>
             <!-- 每产生一个日志文件，该日志文件的保存期限为30天 -->
             <maxHistory>30</maxHistory>
-            <timeBasedFileNamingAndTriggeringPolicy  class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <!-- maxFileSize:这是活动文件的大小，默认值是10MB,本篇设置为1KB，只是为了演示 -->
                 <maxFileSize>1KB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
@@ -39,12 +39,12 @@
     </appender>
     <!-- 控制台输出日志级别 -->
     <root level="info">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="STDOUT"/>
     </root>
     <!-- 指定项目中某个包，当有日志操作行为时的日志记录级别 -->
     <!-- com.appley为根包，也就是只要是发生在这个根包下面的所有日志操作行为的权限都是DEBUG -->
     <!-- 级别依次为【从高到低】：FATAL > ERROR > WARN > INFO > DEBUG > TRACE  -->
     <logger name="com.appleyk" level="DEBUG">
-        <appender-ref ref="syslog" />
+        <appender-ref ref="syslog"/>
     </logger>
 </configuration>

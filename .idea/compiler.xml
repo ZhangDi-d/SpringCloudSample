@@ -6,19 +6,20 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="Test1" />
-        <module name="sample" />
-        <module name="eureka-server" />
-        <module name="demo-biz-module1" />
-        <module name="hrserver" />
-        <module name="service-feign" />
-        <module name="service-hello" />
-        <module name="demo-main" />
         <module name="spring-boot-mp-common" />
-        <module name="service-ribbon" />
-        <module name="service-zuul" />
-        <module name="spring-boot-mp-shiro" />
+        <module name="service-feign" />
         <module name="spring-boot-shiro" />
+        <module name="spring-boot-mp-shiro" />
+        <module name="hrserver" />
+        <module name="demo-main" />
+        <module name="service-zuul" />
+        <module name="service-ribbon" />
+        <module name="service-hello-consul" />
+        <module name="eureka-server" />
+        <module name="sample" />
+        <module name="Test1" />
+        <module name="service-hello" />
+        <module name="demo-biz-module1" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
@@ -44,6 +45,7 @@
       <module name="hrserver" options="-parameters" />
       <module name="service-feign" options="-parameters" />
       <module name="service-hello" options="-parameters" />
+      <module name="service-hello-consul" options="-parameters" />
       <module name="service-ribbon" options="-parameters" />
       <module name="service-zuul" options="-parameters" />
     </option>

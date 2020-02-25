@@ -22,6 +22,7 @@
         <module>service-ribbon</module>
         <module>service-feign</module>
         <module>service-zuul</module>
+        <module>service-hello-consul</module>
     </modules>
 
     <properties>
@@ -70,7 +71,7 @@
             </snapshots>
         </repository>
     </repositories>-->
-<!--为什么要修改:repositoryhttps://www.cnblogs.com/huiy/p/8664006.html-->
+    <!--为什么要修改:repositoryhttps://www.cnblogs.com/huiy/p/8664006.html-->
     <repositories>
         <repository>
             <id>spring-milestones</id>
@@ -87,7 +88,7 @@
         </repository>
         <repository>
             <id>org.springframework</id>
-            <url> http://maven.springframework.org/snapshot</url>
+            <url>http://maven.springframework.org/snapshot</url>
         </repository>
         <repository>
             <id>spring-milestone</id>

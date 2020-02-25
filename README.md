@@ -2,7 +2,7 @@
 A simple project of springcloud self-learning.
 
 ## 一.服务注册与发现
-### Eureka
+### Eureka server
 #### 1. 引入依赖 
 ```xml
 <!--加入的 spring-cloud-starter-eureka-server 会自动引入 spring-boot-starter-web -->
@@ -56,8 +56,23 @@ spring:
     name: eureka-server
 ```
 
-#### 服务提供者 ,以service-hello为例
-1. application.yzmdl
+### 服务提供者 ,以service-hello为例
+#### 1. pom.xml配置
+```xml
+<dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+```
+
+#### 2. @EnableEurekaClient 或者 @EnableDiscoveryClient
+#### 3. application.yzmdl
 ```yaml
 server:
   port: 8762
@@ -72,7 +87,7 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
 ```
 
-2. 添加 以下注解属性的好处是 服务以ip:port展示,
+3.2 添加 以下注解属性的好处是 服务以ip:port展示,
 ```yaml
 instance:
     prefer-ip-address: true
@@ -84,7 +99,7 @@ instance:
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200225092837870.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
 
 
-3. 注册到eureka集群的service-hello的配置:
+3.3 集群 配置:
 ```yaml
 server:
   port: 8762
@@ -103,19 +118,143 @@ eureka:
 ```
 
 
+### Consul 
+配合consul 注册中心使用,consul 下载和使用: https://blog.csdn.net/ShelleyLittlehero/article/details/104391744
 
 
-## 服务消费的两种方式
+
+## 二.服务消费的两种方式
 1.RestTemplate+Ribbon 
-2.Feign去消费服务。
+2.Feign去消费服务
 
-## Feign(声明式服务调用)
+###  Ribbon 客户端负载均衡
+#### 1. pom.xml
+```xml
+<dependencies>
+        <!--作为服务被euraka发现-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <!--spring mvc-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!--客户端负载均衡组件依赖-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+        </dependency>
+        <!--在ribbon使用断路器的依赖-->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+        </dependency>
+
+    </dependencies>
+
+```
+
+#### 2. application.yml
+```yaml
+spring:
+  application:
+    name: service-ribbon
+server:
+  port: 8764
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+```
+
+#### 3.注解  
+@EnableDiscoveryClient -> 通过@EnableDiscoveryClient向服务中心注册
+
+@EnableHystrix -> 开启Hystrix
+
+@LoadBalanced ->开启客户端负载均衡功能
+
+#### 4. 测试
+1.启动 euraka-server ->     EurekaServerApplication;
+
+2.启动 service-ribbon  ->     ServiceRibbonApplication;
+
+3.以 8762 端口 启动 service-hello ->       ServiceHelloApplication;
+
+4.以 8763 端口 启动 service-hello ->       ServiceHelloApplication;
+
+5.调用service-ribbon 的 接口  `http://localhost:8764/hello?name=zhangsan`, service-ribbon会使用restTemplate调用 service-hello
+
+
+ 
+
+
+###  Spring Cloud Feign 声明式服务调用
 Feign是一个声明式的伪Http客户端，它使得写Http客户端变得更简单。使用Feign，只需要创建一个接口并注解。它具有可插拔的注解特性，可使用Feign 注解和JAX-RS注解。Feign支持可插拔的编码器和解码器。Feign默认集成了Ribbon，并和Eureka结合，默认实现了负载均衡的效果。
-
+```text
 简而言之：
 1.Feign 采用的是基于接口的注解
 2.Feign 整合了ribbon，具有负载均衡的能力
 3.整合了Hystrix，具有熔断的能力
+```
+
+#### 1. pom.xml
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-openfeign</artifactId>
+    </dependency>
+</dependencies>
+```
+
+#### 2. application.yml
+```yaml
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+server:
+  port: 8765
+spring:
+  application:
+    name: service-feign
+
+#Feign是自带断路器的，在D版本的Spring Cloud之后，它没有默认打开
+# feign.hystrix.enabled: true  或者下面的写法
+feign:
+  hystrix:
+    enabled: true
+
+```
+
+#### 3.注解
+@EnableDiscoveryClient ->作为服务被发现
+
+@EnableFeignClients -> 开启Feign的功能
+
+@FeignClient(value = "service-hello",fallback = SchedualServiceHelloHystric.class) ->指定调用哪个服务下的接口,并加上 fallback 容错
+
+
+#### 4. 测试
+1.启动 euraka-server ->     EurekaServerApplication;
+
+2.启动 service-feign  ->     ServiceFeignApplication;
+
+3. 启动 service-hello ->       ServiceHelloApplication;
+
+4.调用 `http://localhost:8765/hello?name=zhangsan`, 查看是否可以调通service-hello
+
 ----
 
 ## Hystrix

@@ -15,7 +15,8 @@ zuul:
       path: /api-a/**
       serviceId: service-ribbon  # serviceId:service-ribbon 发现格式不对,要在:后跟个空格
     api-b:
-          path: /api-b/**
-          serviceId: service-feign
+      path: /api-b/**
+      serviceId: service-feign
 logging:
-  config: classpath: logback-boot.xml
+  config:
+    classpath: logback-boot.xml
