@@ -255,6 +255,14 @@ feign:
 
 4.调用 `http://localhost:8765/hello?name=zhangsan`, 查看是否可以调通service-hello
 
+
+
+### Feign 文件上传
+在Spring Cloud封装的Feign中并不直接支持传文件，但可以通过引入Feign的扩展包来实现
+
+
+
+
 ----
 
 ## Hystrix
