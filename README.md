@@ -329,9 +329,21 @@ Content-Disposition: form-data; name="file"; filename="D:\back\1.txt"
 ```
 
 
+### Spring Cloud Config 分布式配置中心
+Spring Cloud Config 分布式配置中心 由两部分组成 config-server 和config-client.
+
+####  1. config-server
+访问配置信息的URL与配置文件的映射关系如下：
+- /{application}/{profile}[/{label}]
+
+- /{application}-{profile}.yml
+- /{label}/{application}-{profile}.yml
+
+- /{application}-{profile}.properties
+- /{label}/{application}-{profile}.properties
 
 
-----
+
 
 ## Hystrix
 1.ribbon中使用断路器:
