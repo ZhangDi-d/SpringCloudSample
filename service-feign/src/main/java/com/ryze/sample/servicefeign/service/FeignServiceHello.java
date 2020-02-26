@@ -24,9 +24,9 @@ public interface FeignServiceHello {
     @RequestMapping(value = "/hello", method = RequestMethod.GET)
     String sayHiFromClientOne(@RequestParam(value = "name") String name);
 
-    @RequestMapping(value = "/file/uploadFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/file/uploadFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String uploadFile(@RequestPart(value = "file") MultipartFile file);
 
-    @RequestMapping(value = "/file/uploadFile2", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/file/uploadFile2", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String uploadFile2(MultipartFile file);
 }

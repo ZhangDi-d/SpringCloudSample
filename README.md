@@ -259,6 +259,74 @@ feign:
 
 ### Feign 文件上传
 在Spring Cloud封装的Feign中并不直接支持传文件，但可以通过引入Feign的扩展包来实现
+#### 1.service-hello 作为上传服务的提供方,只需添加上传文件的接口即可
+```yaml
+UploadProviderController.java
+```
+
+#### 2. service-feign 作为服务的消费方,调用service-hello接口到达上传文件的目的
+注意 : pom.xml中要新增feign-form 和feign-form-spring 的依赖,并且他们的版本和Feign的版本一定要对应,不然会报错
+```yaml
+<dependency>
+            <groupId>io.github.openfeign.form</groupId>
+            <artifactId>feign-form</artifactId>
+            <version>3.8.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign.form</groupId>
+            <artifactId>feign-form-spring</artifactId>
+            <version>3.8.0</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-fileupload</groupId>
+            <artifactId>commons-fileupload</artifactId>
+            <version>1.3.3</version>
+        </dependency>
+```
+
+**版本对应问题:**
+```txt
+The feign-form extension depend on OpenFeign and its concrete versions:
+
+1. all feign-form releases before 3.5.0 works with OpenFeign 9.* versions;
+2. starting from feign-form's version 3.5.0, the module works with OpenFeign 10.1.0 versions and greater.
+
+IMPORTANT: there is no backward compatibility and no any gurantee that the feign-form's versions after 3.5.0work with OpenFeign before 10.*. OpenFeign was refactored in 10th release, so the best approach - use the freshest OpenFeign and feign-form versions.
+```
+
+#### 3. 增加@Configuration 配置
+```java
+@Configuration
+public class FeignSupportConfig {
+    @Bean
+    public Encoder feignFormEncoder() {
+        return new SpringFormEncoder();
+    }
+}
+```
+
+#### 4. 在@FeignClient 注解中指定
+```java
+@FeignClient(value = "service-hello", fallback = FeignServiceHelloHystric.class,configuration = FeignSupportConfig.class)
+``` 
+
+#### 5.  启动eureka-server ,service-hello ,service-feign ,使用postman测试即可
+
+#### 6. 使用idea 自带的接口测试工具 测试
+
+更多可以参考:https://blog.csdn.net/u012954706/article/details/89383076
+
+```http request
+
+POST http://localhost:8765/uploadFile
+Accept: */*
+Cache-Control: no-cache
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="D:\back\1.txt"
+
+```
 
 
 
