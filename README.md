@@ -306,7 +306,7 @@ public class FeignSupportConfig {
 ```
 
 #### 4. 在@FeignClient 注解中指定
-```java
+```text
 @FeignClient(value = "service-hello", fallback = FeignServiceHelloHystric.class,configuration = FeignSupportConfig.class)
 ``` 
 
@@ -329,8 +329,10 @@ Content-Disposition: form-data; name="file"; filename="D:\back\1.txt"
 ```
 
 
-### Spring Cloud Config 分布式配置中心
+## 四.Spring Cloud Config 分布式配置中心
 Spring Cloud Config 分布式配置中心 由两部分组成 config-server 和config-client.
+
+### config-server  基于Git仓库的配置中心
 
 ####  1. config-server
 访问配置信息的URL与配置文件的映射关系如下：
@@ -342,8 +344,67 @@ Spring Cloud Config 分布式配置中心 由两部分组成 config-server 和co
 - /{application}-{profile}.properties
 - /{label}/{application}-{profile}.properties
 
+#### 2. config-server pom.xml
+```xml
+ <dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-config-server</artifactId>
+</dependency>
+```
 
+#### 3. config-server application.yml
 
+`https://gitee.com/xuelaiLittleHero/config-repo-demo` 是远程配置文件仓库的地址.
+
+```yaml
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://gitee.com/xuelaiLittleHero/config-repo-demo
+          searchPaths: config
+#          username:
+#          password:
+server:
+  port: 8766
+```
+#### 4. 配置server 的启动类 ,并加注解  @EnableConfigServer, 开启Spring Cloud Config的服务端功能
+
+### config-client  使用配置中心的客户端
+
+#### 1.pom.xml
+```xml
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+</dependency>
+```
+
+#### 2. bootstrap.yml (使用配置服务的客户端,配置文件应为 bootstrap.xml或者 bootstrap.properties ,他的加载早于 application.yml)
+
+```yaml
+spring:
+  application:
+    name: config-client
+  cloud:
+    config:
+      uri: http://localhost:8766/
+      profile: dev
+      label: master
+```
+**涉及到使用配置服务的配置要存放于bootstrap.xml或者 bootstrap.properties,这样才能保证config-server中的配置信息才能被正确加载**
+
+#### 3. 测试 ,使用接口 `http://localhost:8767/getInfo` 测试配置是否能被拿到 .
+
+ 
 
 ## Hystrix
 1.ribbon中使用断路器:

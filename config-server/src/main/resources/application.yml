@@ -6,6 +6,7 @@ spring:
       server:
         git:
           uri: https://gitee.com/xuelaiLittleHero/config-repo-demo
+          searchPaths: config
 #          username:
 #          password:
 server:
