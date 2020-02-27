@@ -19,6 +19,7 @@
         <module name="service-hello-consul" />
         <module name="eureka-server" />
         <module name="sample" />
+        <module name="hystrix-dashboard" />
         <module name="Test1" />
         <module name="service-hello" />
         <module name="demo-biz-module1" />
@@ -47,6 +48,7 @@
       <module name="config-server" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
       <module name="hrserver" options="-parameters" />
+      <module name="hystrix-dashboard" options="-parameters" />
       <module name="service-feign" options="-parameters" />
       <module name="service-hello" options="-parameters" />
       <module name="service-hello-consul" options="-parameters" />

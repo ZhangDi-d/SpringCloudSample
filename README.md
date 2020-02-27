@@ -571,14 +571,14 @@ Cache-Control: no-cache
 
 ```
 
-###  Hystrix
+##  Hystrix
 Hystrix具备了服务降级、服务熔断、线程隔离、请求缓存、请求合并以及服务监控等强大功能。
 
-#### Hystrix服务降级
+### Hystrix服务降级
 涉及模块: eureka-server , service-ribbon, service-hello
 
 
-#####  service-ribbon pom.xml 
+####  service-ribbon pom.xml 
 service-ribbon pom.xml增加hystrix 的依赖
 ```xml
 <!--在ribbon使用断路器的依赖-->
@@ -588,7 +588,7 @@ service-ribbon pom.xml增加hystrix 的依赖
 </dependency>
 ```
 
-##### 注解 
+#### 注解 
 使用 @SpringCloudApplication 或者 @EnableHystrix 或者 @EnableCircuitBreaker 开启服务降级
 
 #### 注解  
@@ -601,14 +601,14 @@ service-ribbon pom.xml增加hystrix 的依赖
     }
 ```
 
-##### 测试 
+#### 测试 
 启动 eureka-server,service-ribbon ,不启动 service-hello,访问 `http://localhost:8764/hello?name=zhangsan` ,提示 `hello,zhangsan,sorry,error!`
 
 
-#### Hystrix依赖隔离
+### Hystrix依赖隔离
 线程池隔离和信号量隔离
 
-#### Hystrix断路器
+### Hystrix断路器
 “断路器”本身是一种开关装置，用于在电路上保护线路过载，当线路中有电器发生短路时，“断路器”能够及时的切断故障电路，防止发生过载、发热、甚至起火等严重后果。
 
 在Hystrix服务降级一节中,我们没有启动service-hello 服务提供方,导致service-ribbon 触发了降级逻辑,
@@ -627,8 +627,126 @@ service-ribbon pom.xml增加hystrix 的依赖
 在断路器打开之后，处理逻辑并没有结束，我们的降级逻辑已经被成了主逻辑，那么原来的主逻辑要如何恢复呢？对于这一问题，hystrix也为我们实现了自动恢复功能。当断路器打开，对主逻辑进行熔断之后，hystrix会启动一个休眠时间窗，在这个时间窗内，降级逻辑是临时的成为主逻辑，当休眠时间窗到期，断路器将进入半开状态，释放一次请求到原来的主逻辑上，如果此次请求正常返回，那么断路器将继续闭合，主逻辑恢复，如果这次请求依然有问题，断路器继续进入打开状态，休眠时间窗重新计时。
 
 
-#### Hystrix监控面板
-涉及模块 eureka-server , service-hello , service-ribbon;
+### Hystrix监控面板
+涉及模块 eureka-server , service-hello (服务提供方), service-ribbon (调用service-hello的消费方), hystrix-dashboard(监控模块);
+
+
+#### 1. 新建 hystrix-dashboard 模块
+pom.xml 中引入关键依赖如下 :
+```xml
+<dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+        </dependency>
+    </dependencies>
+
+```
+
+#### 2. application.yml 
+```yaml
+spring:
+  application:
+    name: hystrix-dashboard
+server:
+  port: 8768
+```
+
+#### 3. 添加启动类,并且添加合适的注解
+
+```java
+@EnableHystrixDashboard //开启监控页面
+@SpringCloudApplication //包含三个注解 , 开启服务注册与发现 , 开启服务容错
+public class HystrixDashBoardApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(HystrixDashBoardApplication.class, args);
+    }
+}
+```
+
+#### 4.测试 
+访问`http://localhost:8768/hystrix ` ,弹出以下界面则服务启动成功
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200227132358435.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+Hystrix Dashboard共支持三种不同的监控方式，依次为：
+
+- 默认的集群监控：通过URLhttp://turbine-hostname:port/turbine.stream开启，实现对默认集群的监控。
+- 指定的集群监控：通过URLhttp://turbine-hostname:port/turbine.stream?cluster=[clusterName]开启，实现对clusterName集群的监控。
+- 单体应用的监控：通过URLhttps://hystrix-app:port/actuator/hystrix.stream开启，实现对具体某个服务实例的监控。
+
+参数 : 
+Delay：该参数用来控制服务器上轮询监控信息的延迟时间，默认为2000毫秒，我们可以通过配置该属性来降低客户端的网络和CPU消耗。
+Title：该参数对应了上图头部标题Hystrix Stream之后的内容，默认会使用具体监控实例的URL，我们可以通过配置该信息来展示更合适的标题。
+
+
+#### 5. service-ribbon pom.xml
+pom.xml 新增与hystrix 相关的依赖
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+<!--dashboard-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+</dependency>
+<!--监控-->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+#### 6. service-ribbon新增配置 
+service-ribbon 已经 添加过注解@EnableHystrix  , springboot2.x 之后还需要在service-ribbon模块中新增以下配置 :
+
+```text
+//springboot 2.x 之后 需要在想要监控的服务中添加 一下内容 ,
+    @Bean
+    public ServletRegistrationBean getServlet() {
+        HystrixMetricsStreamServlet streamServlet = new HystrixMetricsStreamServlet();
+        ServletRegistrationBean registrationBean = new ServletRegistrationBean(streamServlet);
+        registrationBean.setLoadOnStartup(1);
+        registrationBean.addUrlMappings("/actuator/hystrix.stream"); // 此地址是在hystrix-dashboard 中输入的监控的地址
+        registrationBean.setName("HystrixMetricsStreamServlet");
+        return registrationBean;
+    }
+```
+
+#### 7. 需要监控的接口上一定要有 @HystrixCommand 注解,否则无法被监控到
+
+#### 8. 测试
+启动 eureka-server , service-hello , service-ribbon , hystrix-dashboard;
+
+在 hystrix-dashboard 的首页(一个豪猪的页面) 输入监控模块的url `localhost:8764/actuator/hystrix.stream`
+
+点击按钮,进入监控页面 ,发现 一直在loading ,此时需要调用 以下服务接口,否则数据不会出来 
+
+调用接口 `http://localhost:8764/hello?name=lisi`  , 弹出 `hello lisi ,i am from port:8762` 
+
+此时再查看hystrix-dashboard ,发现已经出现数据 :
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200227135624576.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+根据各种颜色,区分请求状态对应的的请求数.
+
+
+
+
 
  
 

@@ -13,6 +13,7 @@ public class HelloServiceImpl implements HelloService {
     @Autowired
     RestTemplate restTemplate;
 
+    //服务的接口一点要有 @ HystrixCommand ,否则根本无法在hystrix-dashboard 中监控到
     @Override
     @HystrixCommand(fallbackMethod = "helloError") //在ribbon中使用断路器,该注解对该方法创建了熔断器的功能，并指定了fallbackMethod熔断方法
     public String helloService(String name) {

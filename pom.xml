@@ -25,6 +25,7 @@
         <module>service-hello-consul</module>
         <module>config-server</module>
         <module>config-client</module>
+        <module>hystrix-dashboard</module>
     </modules>
 
     <properties>
