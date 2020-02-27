@@ -442,6 +442,141 @@ info:
 `http://localhost:8767/getInfo` -> 输出 `InfoController getInfo===============>profile=dev,from=config/dev,secretValue=pa2sW0rd`,ok.
 
 
+### spring cloud config 高可用与动态刷新
+#### 高可用
+config server 的高可用,可以使用集群部署 config server ,让他们指向同一个 git配置文件库, 然后使用 负载均衡 ,config client 动态的去 指定 config server.
+另一种更为简单的做法是,将集群部署的config server 也注册为服务,供eureka 发现. 这样config client可以 以服务的方式去访问 config server.
+
+##### 1. config server  pom.xml
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+
+``` 
+
+##### 2. config server application.yml 
+增加 eureka 地址 : 
+
+```yml
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+```
+eureka 的配置最好放在最后,不要放在  git 和 spring 之间 ,不要想下面这样: 这样 spring会认为git 是配置在 eureka下的,启动会报错
+```yaml
+
+spring:
+  application:
+    name: config-server
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://gitee.com/xuelaiLittleHero/config-repo-demo
+          searchPaths: config
+#          username:
+#          password:
+
+server:
+  port: 8766
+
+
+
+```
+
+##### 3. config server  @EnableDiscoveryClient 
+  在启动类上 增加注解 @EnableDiscoveryClient ->注册为服务 ,供euraka发现
+  
+  
+##### 4. config client pom.xml
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+
+``` 
+
+##### 5. config client bootstrap.yml 
+bootstrap.yml 做以下修改 : 注释 之前config-client 直连 config-server 的配置 ; 
+
+增加 config-client 通过 服务注册与发现 调用 config-server 的配置. 
+
+```yaml
+  ## 注意 :  当 config client 不直接访问 config server 时 ,这段配置就需要注释掉了
+#  cloud:
+#    config:
+#      uri: http://localhost:8766/
+#      profile: dev
+#      label: master
+ ## 注意  config client 以服务的方式 访问 config server 时 ,要增加 eureka 的配置 和 config 的相关配置
+  cloud:
+    config:
+      discovery:
+        enabled: true  # 开启通过服务来访问Config Server的功能
+        service-id: config-server # 指定Config Server注册的服务名
+      profile: dev # 用于定位Git中的资源
+# 指定服务注册中心，用于服务的注册与发现
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+```
+ 
+ #### 配置的自动刷新
+   config-server 不用做修改,修改主要在config-client中.
+   
+ #####  config-client pom.xml
+ 增加监控 组件,它包含/refresh 端点:
+ 
+ 
+ ```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+ 
+ ##### bootstrap.yml
+ 
+ 注意 但是SpringCloud 2.0.0 我们需要在bootstrap.yml里面加上需要暴露出来的地址 , 刷新地址不是/refresh了,默认是/actuator/refresh
+  base-path可以自定义路径->/config/refresh;
+  
+ ```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh,health
+      base-path: /config
+``` 
+ 
+ ##### @RefreshScope  
+  在需要刷新参数的类上加@RefreshScope ,实现自动刷新
+
+##### 测试 
+使用post请求刷新端口,查看前后  `http://localhost:8767/getInfo` 是否有值的变化.
+
+```http request
+POST http://localhost:8767/config/refresh
+Accept: */*
+Cache-Control: no-cache
+
+```
+
+###  Hystrix
+Hystrix具备了服务降级、服务熔断、线程隔离、请求缓存、请求合并以及服务监控等强大功能。
+
+#### Hystrix服务降级
+
+
 
 
 ## Hystrix

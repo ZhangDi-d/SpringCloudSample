@@ -1,11 +1,36 @@
 spring:
   application:
     name: config-client
+  ## 注意 :  当 config client 不直接访问 config server 时 ,这段配置就需要注释掉了
+#  cloud:
+#    config:
+#      uri: http://localhost:8766/
+#      profile: dev
+#      label: master
+ ## 注意  config client 以服务的方式 访问 config server 时 ,要增加 eureka 的配置 和 config 的相关配置
   cloud:
     config:
-      uri: http://localhost:8766/
-      profile: dev
-      label: master
+      discovery:
+        enabled: true  # 开启通过服务来访问Config Server的功能
+        service-id: config-server # 指定Config Server注册的服务名
+      profile: dev # 用于定位Git中的资源
+# 指定服务注册中心，用于服务的注册与发现
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+# 但是SpringCloud 2.0.0 我们需要在bootstrap.yml里面加上需要暴露出来的地址 , 刷新地址不是/refresh了,默认是/actuator/refresh
+#  可以自定义路径注意这里的/config/refresh
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh,health
+      base-path: /config
+
+
+
+
 
 # 两个配置文件来区分一下,理解为什么要将与config相关的配置都放在bootstrap.yml中
 
@@ -14,4 +39,5 @@ spring:
 #spring.application.name：对应配置文件规则中的{application}部分
 #spring.cloud.config.profile：对应配置文件规则中的{profile}部分
 #spring.cloud.config.label：对应配置文件规则中的{label}部分
+
 #spring.cloud.config.uri：配置中心config-server的地址
