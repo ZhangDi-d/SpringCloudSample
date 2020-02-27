@@ -2,6 +2,7 @@ package com.ryze.sample.serviceribbon;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.SpringCloudApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.cloud.netflix.hystrix.EnableHystrix;
@@ -20,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 //@EnableEurekaClient
 @EnableDiscoveryClient //通过@EnableDiscoveryClient向服务中心注册
 @EnableHystrix  //在Ribbon中使用断路器;@EnableHystrix注解开启Hystrix
+//@SpringCloudApplication 该注解包含三个注解 ,可以替代上面三个注解
 public class ServiceRibbonApplication {
 
     public static void main(String[] args) {

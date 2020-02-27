@@ -575,6 +575,62 @@ Cache-Control: no-cache
 Hystrix具备了服务降级、服务熔断、线程隔离、请求缓存、请求合并以及服务监控等强大功能。
 
 #### Hystrix服务降级
+涉及模块: eureka-server , service-ribbon, service-hello
+
+
+#####  service-ribbon pom.xml 
+service-ribbon pom.xml增加hystrix 的依赖
+```xml
+<!--在ribbon使用断路器的依赖-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+```
+
+##### 注解 
+使用 @SpringCloudApplication 或者 @EnableHystrix 或者 @EnableCircuitBreaker 开启服务降级
+
+#### 注解  
+在service-ribbon 中调用 service-hello 的方法上加上 @ HystrixCommand,并指定fallbackMethod熔断方法
+```text
+
+    @HystrixCommand(fallbackMethod = "helloError") //在ribbon中使用断路器,该注解对该方法创建了熔断器的功能，并指定了fallbackMethod熔断方法
+    public String helloService(String name) {
+        return restTemplate.getForObject("http://service-hello/hello?name=" + name, String.class);
+    }
+```
+
+##### 测试 
+启动 eureka-server,service-ribbon ,不启动 service-hello,访问 `http://localhost:8764/hello?name=zhangsan` ,提示 `hello,zhangsan,sorry,error!`
+
+
+#### Hystrix依赖隔离
+线程池隔离和信号量隔离
+
+#### Hystrix断路器
+“断路器”本身是一种开关装置，用于在电路上保护线路过载，当线路中有电器发生短路时，“断路器”能够及时的切断故障电路，防止发生过载、发热、甚至起火等严重后果。
+
+在Hystrix服务降级一节中,我们没有启动service-hello 服务提供方,导致service-ribbon 触发了降级逻辑,
+但是即使这样，受限于Hystrix超时时间的问题，我们的调用依然很有可能产生堆积。
+
+这个时候断路器就会发挥作用，那么断路器是在什么情况下开始起作用呢？这里涉及到断路器的三个重要参数：**快照时间窗、请求总数下限、错误百分比下限**。这个参数的作用分别是：
+
+- 快照时间窗：断路器确定是否打开需要统计一些请求和错误数据，而统计的时间范围就是快照时间窗，默认为最近的10秒。
+- 请求总数下限：在快照时间窗内，必须满足请求总数下限才有资格根据熔断。默认为20，意味着在10秒内，如果该hystrix命令的调用此时不足20次，即时所有的请求都超时或其他原因失败，断路器都不会打开。
+- 错误百分比下限：当请求总数在快照时间窗内超过了下限，比如发生了30次调用，如果在这30次调用中，有16次发生了超时异常，也就是超过50%的错误百分比，在默认设定50%下限情况下，这时候就会将断路器打开。
+
+那么当断路器打开之后会发生什么呢？我们先来说说断路器未打开之前，对于之前那个示例的情况就是每个请求都会在当hystrix超时之后返回fallback，每个请求时间延迟就是近似hystrix的超时时间，如果设置为5秒，那么每个请求就都要延迟5秒才会返回。当熔断器在10秒内发现请求总数超过20，并且错误百分比超过50%，这个时候熔断器打开。打开之后，再有请求调用的时候，将不会调用主逻辑，而是直接调用降级逻辑，这个时候就不会等待5秒之后才返回fallback。
+
+**通过断路器，实现了自动地发现错误并将降级逻辑切换为主逻辑，减少响应延迟的效果。**
+
+在断路器打开之后，处理逻辑并没有结束，我们的降级逻辑已经被成了主逻辑，那么原来的主逻辑要如何恢复呢？对于这一问题，hystrix也为我们实现了自动恢复功能。当断路器打开，对主逻辑进行熔断之后，hystrix会启动一个休眠时间窗，在这个时间窗内，降级逻辑是临时的成为主逻辑，当休眠时间窗到期，断路器将进入半开状态，释放一次请求到原来的主逻辑上，如果此次请求正常返回，那么断路器将继续闭合，主逻辑恢复，如果这次请求依然有问题，断路器继续进入打开状态，休眠时间窗重新计时。
+
+
+#### Hystrix监控面板
+涉及模块 eureka-server , service-hello , service-ribbon;
+
+ 
 
 
 
