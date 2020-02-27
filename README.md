@@ -404,7 +404,45 @@ spring:
 
 #### 3. 测试 ,使用接口 `http://localhost:8767/getInfo` 测试配置是否能被拿到 .
 
- 
+### 分布式配置中心（加密解密,以对称加密为例）
+
+#### 1.下载配置JCE 
+
+地址 :http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip
+配置到 jdk 目录中 .
+
+#### 2. 配置 加密 key
+config-server bootstrap.yml 配置对称加密的key
+```yaml
+encrypt:
+  key: ryze
+``` 
+
+#### 3. 加密
+启动config-server, 访问  http://localhost:8766/encrypt/status ，显示状态OK。
+使用 curl 访问 /encrypt 端点进行加密, 获得属性 pa2sW0rd 加密后的值 ,配置在 远程git 仓库的配置文件中 
+```curl
+C:\Users\张 迪>curl http://localhost:8766/encrypt/ -d pa2sW0rd
+
+9ae2d08f248ab77561cbea8fe88566b7665f8ad65527e7757dcf1cd3bffe1aae
+```
+
+git 仓库配置文件 config-client-dev.yml
+**一定注意 当配置文件是yml格式的时候 ,使用 {cipher}要加单引号,因为yml格式严格,不加''无法解析 **
+
+```yaml
+info:
+  profile: dev
+  from: config/dev
+  secretValue: '{cipher}9ae2d08f248ab77561cbea8fe88566b7665f8ad65527e7757dcf1cd3bffe1aae'
+```
+
+#### 4. 测试 
+验证config client 是否可以获取到正确的加密值:
+`http://localhost:8767/getInfo` -> 输出 `InfoController getInfo===============>profile=dev,from=config/dev,secretValue=pa2sW0rd`,ok.
+
+
+
 
 ## Hystrix
 1.ribbon中使用断路器:

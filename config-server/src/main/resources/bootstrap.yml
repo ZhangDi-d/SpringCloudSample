@@ -1,0 +1,3 @@
+# config 加密解密的测试
+encrypt:
+  key: ryze

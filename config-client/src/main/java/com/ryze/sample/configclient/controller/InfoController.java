@@ -15,8 +15,11 @@ public class InfoController {
     @Value("${info.from}")
     String from;
 
+    @Value("${info.secretValue}") //测试加密解密
+            String secretValue;
+
     @GetMapping(value = "/getInfo")
     public String getInfo() {
-        return "InfoController getInfo===============>profile=" + profile + ",from=" + from;
+        return "InfoController getInfo===============>profile=" + profile + ",from=" + from + ",secretValue=" + secretValue;
     }
 }
