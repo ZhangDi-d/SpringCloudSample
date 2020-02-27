@@ -35,6 +35,7 @@
         <option value="$USER_HOME$/Desktop/source/CpicAutoService/cpicauto-regdis-service/pom.xml" />
         <option value="$USER_HOME$/Desktop/source/CpicAutoService/pom.xml" />
         <option value="$PROJECT_DIR$/../SSMP/pom.xml" />
+        <option value="$PROJECT_DIR$/hystrix-turbine/pom.xml" />
       </set>
     </option>
   </component>

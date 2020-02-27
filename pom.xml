@@ -26,6 +26,7 @@
         <module>config-server</module>
         <module>config-client</module>
         <module>hystrix-dashboard</module>
+        <module>turbine</module>
     </modules>
 
     <properties>

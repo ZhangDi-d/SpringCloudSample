@@ -746,7 +746,106 @@ service-ribbon 已经 添加过注解@EnableHystrix  , springboot2.x 之后还�
 
 
 
+### Hystrix监控数据聚合
+ 
+ 涉及模块 :
+ - eureka-server(注册中心),
+ - service-hello(服务提供方),
+ - service-ribbon(服务消费方,同时也是被监控者),
+ - hystrix-dashboard(监控面板), 
+ - turbine (数据聚合) 
+ 
+ 新建模块  turbine
 
+#### turbine pom.xml
+```xml
+<!-- 提供者消费者 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <!-- actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- hystrix -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+        </dependency>
+        <!-- dashboard -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+        </dependency>
+        <!-- turbine -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-netflix-turbine</artifactId>
+        </dependency>
+```  
+
+#### turbine application.yml
+
+```yaml
+server:
+  port: 8770
+spring:
+  application:
+    name: trubine
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+turbine:
+  app-config: service-ribbon # 指定了需要收集监控信息的服务名；
+  combine-host-port: true
+  cluster-name-expression: new String('default') #参数指定了集群名称为default， "default" 会报错
+management:
+  port: 8771
+```
+
+#### 启动类 注解
+
+```java
+@SpringBootApplication 
+@EnableTurbine //开启 turbine'
+@EnableDiscoveryClient  //开启服务注册与 发现
+@EnableHystrixDashboard //开启 hystrix
+public class TurbineApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(TurbineApplication.class, args);
+
+    }
+}
+```
+
+####  测试 
+启动 
+ - eureka-server(注册中心),
+ - service-hello(服务提供方),
+ - service-ribbon(服务消费方,同时也是被监控者),
+ - hystrix-dashboard(监控面板), 
+ - turbine (数据聚合);
+ 
+ 访问`http://localhost:8768/hystrix` ,打开hystrix-dashboard 首页 ,输入 `localhost:8764/actuator/hystrix.stream` ,进入 service-ribbon 的 监控页面 
+ 
+ 访问`http://localhost:8768/hystrix` ,打开hystrix-dashboard 首页 ,输入 `http://localhost:8770/turbine.stream?cluster=default` ,进入 turbine 的 监控页面;
+ 
+ 访问`http://localhost:8764/hello?name=zhangsan` ;
+ 
+ 如果 两个监控页面发生了变化,证明ok
+ 
+ service-ribbon 监控页面:
+ 
+ ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200227164448228.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+ 
+ turbine 监控页面:
+ 
+ ![在这里插入图片描述](https://img-blog.csdnimg.cn/2020022716451624.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+  
+  
 
  
 
@@ -765,3 +864,9 @@ Feign是自带断路器的，在D版本的Spring Cloud之后，它没有默认�
 
 ## zuul
 Zuul的主要功能是路由转发和过滤器。路由功能是微服务的一部分，比如／api/user转发到到user服务，/api/shop转发到到shop服务。zuul默认和Ribbon结合实现了负载均衡的功能。
+
+
+----------------------------------------------------------
+
+**本文 参考 :**
+http://blog.didispace.com/ 作者 :程序员DD

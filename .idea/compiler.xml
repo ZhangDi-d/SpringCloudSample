@@ -6,6 +6,7 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="turbine" />
         <module name="config-server" />
         <module name="config-client" />
         <module name="spring-boot-mp-common" />
@@ -36,6 +37,7 @@
       <module name="cpicauto-regdis-service" target="1.8" />
       <module name="CpicAutoService" target="1.8" />
       <module name="euraka-server" target="1.8" />
+      <module name="hystrix-turbine" target="1.8" />
       <module name="javaee" target="1.8" />
       <module name="spring-boot-mp-parent" target="1.8" />
       <module name="springboot_shiro" target="1.8" />
@@ -49,11 +51,13 @@
       <module name="eureka-server" options="-parameters" />
       <module name="hrserver" options="-parameters" />
       <module name="hystrix-dashboard" options="-parameters" />
+      <module name="hystrix-turbine" options="-parameters" />
       <module name="service-feign" options="-parameters" />
       <module name="service-hello" options="-parameters" />
       <module name="service-hello-consul" options="-parameters" />
       <module name="service-ribbon" options="-parameters" />
       <module name="service-zuul" options="-parameters" />
+      <module name="turbine" options="-parameters" />
     </option>
   </component>
 </project>
