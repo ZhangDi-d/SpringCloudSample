@@ -6,22 +6,21 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="turbine" />
         <module name="config-server" />
         <module name="config-client" />
         <module name="spring-boot-mp-common" />
         <module name="service-feign" />
-        <module name="spring-boot-shiro" />
-        <module name="spring-boot-mp-shiro" />
+        <module name="turbine" />
+        <module name="turbine-amqp" />
         <module name="hrserver" />
         <module name="demo-main" />
+        <module name="spring-boot-mp-shiro" />
         <module name="service-zuul" />
         <module name="service-ribbon" />
         <module name="service-hello-consul" />
         <module name="eureka-server" />
         <module name="sample" />
         <module name="hystrix-dashboard" />
-        <module name="Test1" />
         <module name="service-hello" />
         <module name="demo-biz-module1" />
       </profile>
@@ -40,7 +39,9 @@
       <module name="hystrix-turbine" target="1.8" />
       <module name="javaee" target="1.8" />
       <module name="spring-boot-mp-parent" target="1.8" />
+      <module name="spring-boot-shiro" target="1.8" />
       <module name="springboot_shiro" target="1.8" />
+      <module name="Test1" target="1.5" />
       <module name="Test4" target="1.5" />
     </bytecodeTargetLevel>
   </component>
@@ -58,6 +59,7 @@
       <module name="service-ribbon" options="-parameters" />
       <module name="service-zuul" options="-parameters" />
       <module name="turbine" options="-parameters" />
+      <module name="turbine-amqp" options="-parameters" />
     </option>
   </component>
 </project>

@@ -831,7 +831,7 @@ public class TurbineApplication {
  
  访问`http://localhost:8768/hystrix` ,打开hystrix-dashboard 首页 ,输入 `localhost:8764/actuator/hystrix.stream` ,进入 service-ribbon 的 监控页面 
  
- 访问`http://localhost:8768/hystrix` ,打开hystrix-dashboard 首页 ,输入 `http://localhost:8770/turbine.stream?cluster=default` ,进入 turbine 的 监控页面;
+ 访问`http://localhost:8768/hystrix` ,打开hystrix-dashboard 首页 ,输入 `http://localhost:8770/turbine.stream` ,进入 turbine 的 监控页面;
  
  访问`http://localhost:8764/hello?name=zhangsan` ;
  
@@ -847,7 +847,152 @@ public class TurbineApplication {
   
   
 
+ ### Hystrix监控数据聚合(amqp)
+ 涉及模块 :
+- eureka-server(注册中心),
+- service-hello(服务提供方),
+- service-ribbon(服务消费方,同时也是被监控者),
+- hystrix-dashboard(监控面板), 
+- turbine-amqp (数据聚合-amqp 方式) 
+- rabbit 服务也要正常启动
+        
+新建模块  turbine-amqp
+        
+ ####  turbine-amqp pom.xml
+ ```xml
+        <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+                </dependency>
+                <!-- actuator -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-actuator</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-netflix-turbine-stream</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+                </dependency>
+                <!--这个是多余的  todo :待验证-->
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-netflix-hystrix-stream</artifactId>
+                </dependency>
+```
+
+#### turbine-amqp application.yml
+```yaml
+server:
+  port: 8773
+spring:
+  application:
+    name: turbine-amqp
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+management:
+  port: 8774
+```
+
+#### 启动类
+```java
+@Configuration
+@EnableAutoConfiguration
+@EnableDiscoveryClient
+@EnableTurbineStream //开启turbine流
+public class TurbineAmqpApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(TurbineAmqpApplication.class, args);
+    }
+}
+```
+
+#### 对 service-ribbon (service-hello 的服务消费端) 修改 pom.xml
+
+pom.xml 增加依赖:
+```xml
+<!--turbine 通过 amqp方式聚合hystrix监控信息 需要添加的依赖 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-netflix-hystrix-stream</artifactId>
+        </dependency>
+        <!--springboot 2.x 在引入 spring-cloud-netflix-hystrix-stream ,还要引入spring-cloud-starter-stream-rabbit
+            否则会报错 : A default binder has been requested, but there is no binder available ,原因是因为 hystrix 需要一个持续的输出源,
+            hystrix-stream的输出源有rabbit和kafa之类。加上相应的依赖解决报错问题
+        -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+        </dependency>
+    </dependencies>
+```
+
+#### service-ribbon application.yml
+增加 rabbitmq 的配置
+```yaml
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+server:
+  port: 8764
+spring:
+  application:
+    name: service-ribbon
+    rabbitmq:
+      host: 127.0.0.1
+      port: 5672
+      username: guest
+      password: guest
+```
+
+#### 测试 : 
+
+1. 启动 rabbitMq ,并且访问   `http://localhost:15672/` 确认正常启动;
+
+2. 启动 eureka-server, service-hello ,service-ribbon, hystrix-dashboard(监控面板), turbine-amqp; 
+
+3. 访问 `http://localhost:8768/hystrix/`  ,打开豪猪页面 , 
+
+4. 访问 `http://localhost:8764/hello?name=lisi` ,调用 接口
+
+5. 在 豪猪页面输入 `http://localhost:8764/actuator/hystrix.stream`  ,打开对service-ribbon 的单个的监控;
+
+6. 在 豪猪页面输入 `http://localhost:8773/turbine.stream`  ,打开对hystrix的聚合的turbine的页面, 发现无法连接, 这里有一个需要注意的地方:
+
+#### 如何解决 trubine-amqp 无法显示 的问题 
+
+1. 访问 `http://localhost:8773/turbine.stream` , 发现 
+![在这里插入图片描述](https://img-blog.csdnimg.cn/2020022817302755.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+2. 打开RabbitMq监控页面 ,查看 交换机情况 ,两个交换机都在
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200228173138646.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+3. 进入 hystrixStreamOutput 发现有输入 ,但是没有 输入
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200228172112756.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
  
+4. 进入hystrixStreamOutput ,将其与   turbineStreamInput 绑定起来 ,具体操作如下 
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/2020022817343190.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+5. 查看是否绑定成功, 点击交换机 turbineStreamInput ,发现如下图则绑定成功,
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200228173523739.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+6. 在 豪猪页面输入 `http://localhost:8773/turbine.stream`  ,打开对hystrix的聚合的turbine的页面 ,ok
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200228173658177.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+truebine-amqp 到此完成.
+
 
 
 

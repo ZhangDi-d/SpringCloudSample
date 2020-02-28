@@ -45,7 +45,19 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
+        <!--turbine 通过 amqp方式聚合hystrix监控信息 需要添加的依赖 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-netflix-hystrix-stream</artifactId>
+        </dependency>
+        <!--springboot 2.x 在引入 spring-cloud-netflix-hystrix-stream ,还要引入spring-cloud-starter-stream-rabbit
+            否则会报错 : A default binder has been requested, but there is no binder available ,原因是因为 hystrix 需要一个持续的输出源,
+            hystrix-stream的输出源有rabbit和kafa之类。加上相应的依赖解决报错问题
+        -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

@@ -27,6 +27,7 @@
         <module>config-client</module>
         <module>hystrix-dashboard</module>
         <module>turbine</module>
+        <module>turbine-amqp</module>
     </modules>
 
     <properties>
