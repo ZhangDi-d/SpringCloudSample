@@ -994,10 +994,248 @@ spring:
 truebine-amqp 到此完成.
 
 
+## 服务网关 Zuul
+
+### 路由功能
+新建模块 service-zuul,
+
+涉及模块:
+ - eureka-server(注册中心),
+ - service-hello(服务提供方),
+ - service-ribbon(服务调用方),
+ - service-ribbon(服务调用方),
+ - service-zuul(服务网关)
+ 
+ #### service-zuul pom.xml
+ 
+ ```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-zuul</artifactId>
+</dependency>
+```
+
+### service-zuul application.yml
+
+在Eureka的帮助下，API网关服务本身就已经维护了系统中所有serviceId与实例地址的映射关系。当有外部请求到达API网关的时候，
+根据请求的URL路径找到最佳匹配的path规则，API网关就可以知道要将该请求路由到哪个具体的serviceId上去。
+
+```yaml
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+server:
+  port: 8769
+spring:
+  application:
+    name: service-zuul
+#首先指定服务注册中心的地址为http://localhost:8761/eureka/，服务的端口为8769，服务名为service-zuul；
+#以/api-a/ 开头的请求都转发给service-ribbon服务；以/api-b/开头的请求都转发给service-feign服务
+zuul:
+  routes:
+    api-a:
+      path: /api-a/**
+      serviceId: service-ribbon  
+    api-b:
+      path: /api-b/**
+      serviceId: service-feign
+```
+
+#### service-zuul  注解启动类
+
+@EnableZuulProxy，开启zuul的功能
+
+```java
+@SpringBootApplication
+@EnableDiscoveryClient
+@EnableZuulProxy    //@EnableZuulProxy，开启zuul的功能
+public class ServiceZuulApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ServiceZuulApplication.class, args);
+    }
+
+}
+```
+
+#### 测试 
+启动:
+ - eureka-server(注册中心),
+ - service-hello(服务提供方),
+ - service-ribbon(服务调用方),
+ - service-ribbon(服务调用方),
+ - service-zuul(服务网关)
+ 
+ 分别使用 `http://localhost:8769/api-a/hello?name=zhangsan` 和 `http://localhost:8769/api-b/hello?name=zhangsan` 访问,观察service-ribbon和 service-feign的控制台输出
+ 
+ 
+ 
+ ### 服务网关之过滤器
+ 服务网关的另一个核心功能就是过滤器.
+ 
+ #### 新增过滤器 MyFilter
+ MyFilter验证一下 请求中是否含有token,
+ 
+ 在Spring Cloud Zuul中实现的过滤器必须包含4个基本特征：过滤类型、执行顺序、执行条件、具体操作。实际上它就是ZuulFilter接口中定义的四个抽象方法：
+```text
+ String filterType();
+ int filterOrder();    
+ boolean shouldFilter();   
+ Object run();
+``` 
+
+ ```java
+public class MyFilter extends ZuulFilter {
+    private static Logger log = LoggerFactory.getLogger(MyFilter.class);
+
+    /**
+     * filterType：返回一个字符串代表过滤器的类型，在zuul中定义了四种不同生命周期的过滤器类型，具体如下：
+     * pre：路由之前
+     * routing：路由之时
+     * post： 路由之后
+     * error：发送错误调用
+     * filterOrder：过滤的顺序,当请求在一个阶段中存在多个过滤器时，需要根据该方法返回的值来依次执行。
+     * shouldFilter：这里可以写逻辑判断，是否要过滤，本文true,因此该过滤器对所有请求都会生效。
+     * run：过滤器的具体逻辑。可用很复杂，包括查sql，nosql去判断该请求到底有没有权限访问。
+     */
+
+    @Override
+    public String filterType() {
+        return "pre";
+    }
+
+    @Override
+    public int filterOrder() {
+        return 0;
+    }
+
+    @Override
+    public boolean shouldFilter() {
+        return true;
+    }
+
+    @Override
+    public Object run() throws ZuulException {
+        RequestContext context = RequestContext.getCurrentContext();
+        HttpServletRequest request = context.getRequest();
+        log.info(String.format("%s >>> %s", request.getMethod(), request.getRequestURL().toString()));
+        String token = request.getParameter("token");
+        if (token == null) {
+            log.warn("token is empty");
+            context.setSendZuulResponse(false);
+            context.setResponseStatusCode(401);
+            try {
+                context.getResponse().getWriter().write("token is empty");
+            } catch (Exception e) {
+            }
+            return null;
+        }
+        return null;
+    }
+}
+```
+ 
+ #### 配置过滤器
+ 编写过滤器完成后需要配置过滤器,让其生效
+ 
+```java
+@Configuration
+public class FilterConfig {
+
+    //配置过滤器,否则不会生效
+    @Bean
+    public MyFilter myFilter() {
+        return new MyFilter();
+    }
+}
+```
+
+#### 测试 
+重启模块service-zuul:
+
+访问 `http://localhost:8769/api-b/hello?name=zhangsan` ,提示 `token is empty`;
+
+访问 `http://localhost:8769/api-b/hello?name=zhangsan&token=123` ,提示 `hello zhangsan ,i am from port:8762`; ok.
+
+
+### 服务网关之统一异常处理
+
+#### 自定义 ErrorFilter 
+由于在请求生命周期的pre、route、post三个阶段中有异常抛出的时候都会进入error阶段的处理，所以我们可以通过创建一个error类型的过滤器来捕获这些异常信息，并根据这些异常信息在请求上下文中注入需要返回给客户端的错误描述，这里我们可以直接沿用在try-catch处理异常信息时用的那些error参数，这样就可以让这些信息被SendErrorFilter捕获并组织成消息响应返回给客户端。比如，下面的代码就实现了这里所描述的一个过滤器：
+
+```java
+public class ErrorFilter extends ZuulFilter {
+
+    Logger log = LoggerFactory.getLogger(ErrorFilter.class);
+
+    @Override
+    public String filterType() {
+        return "error";
+    }
+
+    @Override
+    public int filterOrder() {
+        return 10;
+    }
+
+    @Override
+    public boolean shouldFilter() {
+        return true;
+    }
+
+    @Override
+    public Object run() {
+        RequestContext ctx = RequestContext.getCurrentContext();
+        Throwable throwable = ctx.getThrowable();
+        log.error("this is a ErrorFilter : {}", throwable.getCause().getMessage());
+        ctx.set("error.status_code", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        ctx.set("error.exception", throwable.getCause());
+        return null;
+    }
+
+}
+```
+
+更多 请参考 :http://blog.didispace.com/spring-cloud-zuul-exception-3/
+
+
+## Spring Cloud Stream 消息驱动
 
 
 
-## Hystrix
+
+
+
+
+
+
+
+--------
+## 模块及占用端口 : 
+eureka-server : 8761
+service-hello : 8762 8763
+service-ribbon : 8764 
+service-feign : 8765
+config-server : 8766
+config-client : 8767
+hystrix-dashboard : 8768
+service-zuul : 8769
+turbine : 8770 8771
+service-hello-consul : 8772
+turbine-amqp : 8773 8774
+
+
+---------------------
+拾遗:
 1.ribbon中使用断路器:
 
 1.@EnableHystrix (启动类上加)  
@@ -1006,8 +1244,6 @@ truebine-amqp 到此完成.
 2.feign中使用断路器:
 Feign是自带断路器的，在D版本的Spring Cloud之后，它没有默认打开.打开:feign.hystrix.enabled=true
 
-
-## zuul
 Zuul的主要功能是路由转发和过滤器。路由功能是微服务的一部分，比如／api/user转发到到user服务，/api/shop转发到到shop服务。zuul默认和Ribbon结合实现了负载均衡的功能。
 
 

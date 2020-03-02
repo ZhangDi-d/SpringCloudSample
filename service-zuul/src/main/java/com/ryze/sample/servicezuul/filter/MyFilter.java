@@ -21,8 +21,8 @@ public class MyFilter extends ZuulFilter {
      * routing：路由之时
      * post： 路由之后
      * error：发送错误调用
-     * filterOrder：过滤的顺序
-     * shouldFilter：这里可以写逻辑判断，是否要过滤，本文true,永远过滤。
+     * filterOrder：过滤的顺序,当请求在一个阶段中存在多个过滤器时，需要根据该方法返回的值来依次执行。
+     * shouldFilter：这里可以写逻辑判断，是否要过滤，本文true,因此该过滤器对所有请求都会生效。
      * run：过滤器的具体逻辑。可用很复杂，包括查sql，nosql去判断该请求到底有没有权限访问。
      */
 
