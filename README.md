@@ -1213,8 +1213,10 @@ public class ErrorFilter extends ZuulFilter {
 Spring Cloud Stream 在 Spring Cloud 体系内用于构建高度可扩展的基于事件驱动的微服务，其目的是为了简化消息在 Spring Cloud 应用程序中的开发。
 
 ### 概念 
-group : 
+group :  
 组内只有1个实例消费。如果不设置group，则stream会自动为每个实例创建匿名且独立的group——于是每个实例都会消费。
+
+消费者集群高可用下的保持消息被消费一次的处理.
 
 partition: 
 一个或多个生产者将数据发送到多个消费者，并确保有共同特征标识的数据由同一个消费者处理。默认是对消息进行hashCode，然后根据分区个数取余，所以对于相同的消息，总会落到同一个消费者上。
@@ -1383,7 +1385,93 @@ com.ryze.sample.send.Producer            : send massage end.....................
 com.ryze.sample.receive.Consumer         : receive message: Producer send massage:ProduceController send message:zhangsan
 ```
 
+### stream 核心概念之消费组
 
+>spring.cloud.stream.bindings.<通道名>.group=<消费组名>
+
+很多情况下，消息生产者发送消息给某个具体微服务时，只希望被消费一次，按照上面我们启动两个应用的例子，虽然它们同属一个应用，但是这个消息出现了被重复消费两次的情况。为了解决这个问题，在Spring Cloud Stream中提供了消费组的概念。
+
+如果在同一个主题上的应用需要启动多个实例的时候，我们可以通过spring.cloud.stream.bindings.input.group属性为应用指定一个组名，这样这个应用的多个实例在接收到消息的时候，只会有一个成员真正的收到消息并进行处理。
+
+```text
+消费组和分区的设置
+    给消费者设置消费组和主题
+        设置消费组： spring.cloud.stream.bindings.<通道名>.group=<消费组名>
+        设置主题： spring.cloud.stream.bindings.<通道名>.destination=<主题名>
+    给生产者指定通道的主题：spring.cloud.stream.bindings.<通道名>.destination=<主题名>
+
+    消费者开启分区，指定实例数量与实例索引
+        开启消费分区： spring.cloud.stream.bindings.<通道名>.consumer.partitioned=true
+        消费实例数量： spring.cloud.stream.instanceCount=1 (具体指定)
+        实例索引： spring.cloud.stream.instanceIndex=1 #设置当前实例的索引值
+    生产者指定分区键
+        分区键： spring.cloud.stream.bindings.<通道名>.producer.partitionKeyExpress=<分区键>
+        分区数量： spring.cloud.stream.bindings.<通道名>.producer.partitionCount=<分区数量>
+```
+
+
+#### 测试
+1. 保持 RabbitMq 开启状态 
+2. 启动 stream-producer(8777)
+3. 分别以 8778,8779 启动  stream-consumer ;
+4. 查看 8778 8779控制台 的 输出,两者 输出内容是相同的.
+
+5. 修改stream-consumer application.yml
+
+以8778 启动   `group : group-A` 的 消费者, 以8779 启动   `group : group-A` 的 消费者
+
+```yaml
+server:
+  port: 8778  
+spring:
+  application:
+    name: stream-hello
+  cloud:
+    stream:
+      bindings: # 外部消息传递系统和应用程序之间的桥梁，提供消息的“生产者”和“消费者”（由目标绑定器创建）
+        input:
+          destination: stream-exchange # 指 exchange 的名称
+          binder: localhost_rabbit
+          group : group-A
+#以下省略
+```
+```yaml
+server:
+  port: 8779
+spring:
+  application:
+    name: stream-hello
+  cloud:
+    stream:
+      bindings: # 外部消息传递系统和应用程序之间的桥梁，提供消息的“生产者”和“消费者”（由目标绑定器创建）
+        input:
+          destination: stream-exchange # 指 exchange 的名称
+          binder: localhost_rabbit
+          group : group-A
+#以下省略
+```
+
+6. 启动 stream-producer(8777)
+7. 查看 stream-consumer 的输出 ,证明group 的配置是生效的
+一个为
+```text
+2020-03-03 11:03:24.288  INFO 9784 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:24
+2020-03-03 11:03:34.291  INFO 9784 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:34
+2020-03-03 11:03:44.347  INFO 9784 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:44
+2020-03-03 11:03:54.351  INFO 9784 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:54
+2020-03-03 11:04:04.354  INFO 9784 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:04:04
+2020-03-03 11:04:14.398  INFO 9784 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:04:14
+```
+
+一个为 
+```text
+2020-03-03 11:03:29.289  INFO 11124 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:29
+2020-03-03 11:03:39.473  INFO 11124 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:39
+2020-03-03 11:03:49.347  INFO 11124 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:49
+2020-03-03 11:03:59.352  INFO 11124 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:03:59
+2020-03-03 11:04:09.398  INFO 11124 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:04:09
+2020-03-03 11:04:19.395  INFO 11124 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:04:19
+```
 
 
 
@@ -1401,6 +1489,10 @@ turbine : 8770 8771
 service-hello-consul : 8772
 turbine-amqp : 8773 8774
 stream-hello : 8775(producer) 8776(consumer)
+stream-producer :8777
+stream-consumer :8778 8779(测试消费组的概念)
+ 
+
 
 
 ---------------------
