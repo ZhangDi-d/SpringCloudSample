@@ -9,6 +9,11 @@ spring:
         output:
           destination: stream-exchange
           binder: localhost_rabbit
+          producer: # --------------为了测试 分区加入的配置 begin
+            #partitioned: true
+            partitionKeyExpression: headers['partitionKey'] #一旦计算出消息的key，分区选择程序将把目标分区确定为介于0和partitionCount - 1之间的值
+            partitionCount: 2
+          # --------------为了测试 分区加入的配置 end
       binders: #目标绑定器，目标指的是 kafka 还是 RabbitMQ，绑定器就是封装了目标中间件的包。
         localhost_rabbit:
           type: rabbit
@@ -19,5 +24,7 @@ spring:
                 port: 5672
                 username: guest
                 password: guest
+
+
 
 

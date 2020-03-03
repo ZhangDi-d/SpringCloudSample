@@ -1,5 +1,5 @@
 server:
-  port: 8778
+  port: 8779
 spring:
   application:
     name: stream-consumer
@@ -10,6 +10,12 @@ spring:
           destination: stream-exchange # 指 exchange 的名称
           binder: localhost_rabbit
           group : group-A
+          # -----------为了测试分区加入的配置  - begin
+          consumer:
+            partitioned: true
+            instanceCount: 2 # 消费实例数量
+            instanceIndex: 1 # 设置当前实例的索引值   0,1...instanceCount-1
+          # -----------为了测试分区加入的配置  - end
       binders: #目标绑定器，目标指的是 kafka 还是 RabbitMQ，绑定器就是封装了目标中间件的包。
         localhost_rabbit:
           type: rabbit
@@ -20,5 +26,8 @@ spring:
                 port: 5672
                 username: guest
                 password: guest
+
+
+
 
 

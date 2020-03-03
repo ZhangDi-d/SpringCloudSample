@@ -1473,7 +1473,135 @@ spring:
 2020-03-03 11:04:19.395  INFO 11124 --- [hange.group-A-1] com.ryze.sample.receive.Consumer         : receive message: 2020-03-03 11:04:19
 ```
 
+### stream 核心概念之消息分区
 
+**这一块在测试时,遇到很多问题 : 大多是关于 application.yml 中关于 分区的配置,引起 如 生产者启动是失败 ,消费者接受不到消息,尚待更多研究..**
+
+
+当生产者将消息数据发送给多个消费者实例时，保证同一消息数据始终是由同一个消费者实例接收和处理。
+
+#### stream-producer application.yml
+
+加上 `spring.cloud.stream.bindings.<通道名>.producer.partitionKeyExpression` ->  分区表达式, 例如当表达式的值为1, 那么在订阅者的instance-index中为1的接收方, 将会执行该消息.
+ 和 `spring.cloud.stream.bindings.<通道名>.producer.partitionCount`  ->  指定参与消息分区的消费端节点数量为2个
+ 
+配置 如下 
+```yaml
+server:
+  port: 8777  # stream-hello 分别以 8775(producer) ,8776(concumer) 启动两次
+spring:
+  application:
+    name: stream-producer
+  cloud:
+    stream:
+      bindings: # 外部消息传递系统和应用程序之间的桥梁，提供消息的“生产者”和“消费者”（由目标绑定器创建）
+        output:
+          destination: stream-exchange
+          binder: localhost_rabbit
+          producer: # --------------为了测试 分区加入的配置 begin
+            partitionKeyExpression: headers['partitionKey'] #一旦计算出消息的key，分区选择程序将把目标分区确定为介于0和partitionCount - 1之间的值
+            partitionCount: 2
+          # --------------为了测试 分区加入的配置 end
+      binders: #目标绑定器，目标指的是 kafka 还是 RabbitMQ，绑定器就是封装了目标中间件的包。
+        localhost_rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: 127.0.0.1
+                port: 5672
+                username: guest
+                password: guest
+```
+
+#### stream-producer TimerProducer
+```java
+
+@EnableBinding(Source.class)
+public class TimerProcuer {
+    private static Logger logger = LoggerFactory.getLogger(TimerProcuer.class);
+    private final String format  = "yyyy-MM-dd HH:mm:ss";
+
+//    @Bean
+//    @InboundChannelAdapter(value = Source.OUTPUT, poller = @Poller(fixedDelay = "5000", maxMessagesPerPoll = "1"))
+//    public MessageSource<String> timerMessageSource() {
+//        logger.info("TimerProcuer sendMessage begin ..........");
+//        return () -> new GenericMessage<>(new SimpleDateFormat(format).format(new Date()));
+//    }
+
+    @Bean
+    @InboundChannelAdapter(value = Source.OUTPUT, poller = @Poller(fixedDelay = "5000", maxMessagesPerPoll = "1"))
+    public Message<?> generate() {
+        String value = data[RANDOM.nextInt(data.length)];
+        System.out.println("Sending: " + value);
+        return MessageBuilder.withPayload(value)
+                .setHeader("partitionKey", value)
+                .build();
+    }
+
+    private static final Random RANDOM = new Random(System.currentTimeMillis());
+
+    private static final String[] data = new String[] {
+            "foo1", "bar1", "qux1",
+            "foo2", "bar2", "qux2",
+            "foo3", "bar3", "qux3",
+            "foo4", "bar4", "qux4",
+    };
+}
+```
+
+
+#### stream-consumer application.yml
+主要加入 
+`spring.cloud.stream.bindings.<通道名>.consumer.partitioned` , -> 开启分区
+`spring.cloud.stream.bindings.<通道名>.consumer.instanceCount` , ->由于本例中 启动两个消费者(producer 也设置的2),代表 实例的个数
+`spring.cloud.stream.bindings.<通道名>.consumer.instanceIndex` , -> 代表实例的下标,
+```yaml
+server:
+  port: 8779
+spring:
+  application:
+    name: stream-consumer
+  cloud:
+    stream:
+      bindings: # 外部消息传递系统和应用程序之间的桥梁，提供消息的“生产者”和“消费者”（由目标绑定器创建）
+        input:
+          destination: stream-exchange # 指 exchange 的名称
+          binder: localhost_rabbit
+          group : group-A
+          # -----------为了测试分区加入的配置  - begin
+          consumer:
+            partitioned: true # 开启分区,默认为 false
+            instanceCount: 2 # 消费实例数量
+            instanceIndex: 1 # 设置当前实例的索引值   0,1...instanceCount-1
+          # -----------为了测试分区加入的配置  - end
+      binders: #目标绑定器，目标指的是 kafka 还是 RabbitMQ，绑定器就是封装了目标中间件的包。
+        localhost_rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: 127.0.0.1
+                port: 5672
+                username: guest
+                password: guest
+```
+
+#### 测试 
+
+1. 以  `server.port: 8778` 和 `instanceIndex: 0` 启动 stream-consumer作为第一个消费者
+2. 以  `server.port: 8779` 和 `instanceIndex: 1` 启动 stream-consumer作为第二个消费者
+3. 启动service-producer 
+4. 查看 8778 ,8779 控制台 ;发现  8778 无输出 ,8779 输出一下内容 , 证明分区.
+```text
+2020-03-03 15:16:59.746  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
+2020-03-03 15:17:04.748  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
+2020-03-03 15:17:09.750  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
+2020-03-03 15:17:14.750  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
+2020-03-03 15:17:19.825  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
+2020-03-03 15:17:24.803  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
+2020-03-03 15:17:29.805  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
+```
 
 --------
 ## 模块及占用端口 : 
