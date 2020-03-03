@@ -22,7 +22,9 @@
         <module name="service-hello-consul" />
         <module name="eureka-server" />
         <module name="sample" />
+        <module name="trace-1" />
         <module name="hystrix-dashboard" />
+        <module name="trace-2" />
         <module name="stream-consumer" />
         <module name="service-hello" />
         <module name="demo-biz-module1" />
@@ -64,6 +66,8 @@
       <module name="stream-consumer" options="-parameters" />
       <module name="stream-hello" options="-parameters" />
       <module name="stream-producer" options="-parameters" />
+      <module name="trace-1" options="-parameters" />
+      <module name="trace-2" options="-parameters" />
       <module name="turbine" options="-parameters" />
       <module name="turbine-amqp" options="-parameters" />
     </option>

@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: trace-2
+server:
+  port: 8781
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/

@@ -31,6 +31,8 @@
         <module>stream-hello</module>
         <module>stream-producer</module>
         <module>stream-consumer</module>
+        <module>trace-1</module>
+        <module>trace-2</module>
     </modules>
 
     <properties>

@@ -1603,6 +1603,120 @@ spring:
 2020-03-03 15:17:29.805  INFO 10528 --- [nge.group-A-1-1] com.ryze.sample.receive.Consumer         : receive message: qux1
 ```
 
+-------------------------
+
+
+## 八.Spring Cloud Sleuth 服务链路追踪
+在一个完整的微服务架构项目中，服务之间的调用是很复杂的，Spring Cloud Sleuth可以帮助我们清楚直观的了解每一个服务请求经过了哪些服务，用时多久，谁依赖谁或者被谁依赖。
+
+### quick Start
+
+新建模块 trace-1(可以直接将service-ribbon copy过来 )
+#### trace-1 pom.xml
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<!--客户端负载均衡组件依赖-->
+<dependency>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+<!--服务追踪-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-sleuth</artifactId>
+</dependency>
+```
+
+#### trace-1  application.yml
+```yaml
+spring:
+  application:
+    name: trace-1
+server:
+  port: 8780
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+```
+
+#### 启动类
+```java
+@SpringBootApplication
+@EnableDiscoveryClient
+public class Trace1Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Trace1Application.class, args);
+    }
+
+    @Bean
+    @LoadBalanced
+    RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
+```
+
+#### 调用接口 
+
+```java
+@RestController
+public class TraceController {
+    private final Logger logger = LoggerFactory.getLogger(TraceController.class);
+    @Resource
+    private RestTemplate restTemplate;
+
+    @GetMapping(value = "/trace-1")
+    public String trace() {
+        logger.info("================trace-1 begin================");
+        return restTemplate.getForEntity("http://trace-2/trace-2", String.class).getBody();
+    }
+}
+```
+
+新建模块trace-2 ,pom.xml,application.yml,启动类 同理 
+#### trace-2 被调用接口
+```java
+@RestController
+public class TraceController {
+    private final Logger logger = LoggerFactory.getLogger(TraceController.class);
+    private final String RETURN_STR = "trace-2";
+
+    @GetMapping(value = "/trace-2")
+    public String trace() {
+        logger.info("================trace-2 begin================");
+        return RETURN_STR;
+    }
+}
+```
+
+#### 测试 
+
+访问 `http://localhost:8780/trace-1` , 查看 trace-1,trace-2 的控制台输出:
+```text
+INFO [trace-1,c35be1c226c535c4,c35be1c226c535c4,false] 9628 --- [nio-8780-exec-1] c.r.sample.controller.TraceController    : ================trace-1 begin================
+```
+```text
+INFO [trace-2,0f543d7a73490fe4,fe761e5df5da981c,false] 2936 --- [nio-8781-exec-4] c.r.sample.controller.TraceController    : ================trace-2 begin================
+```
+
+从上面的控制台输出内容中，我们可以看到多了一些形如[trace-1,c35be1c226c535c4,c35be1c226c535c4,false]的日志信息，而这些元素正是实现分布式服务跟踪的重要组成部分，它们每个值的含义如下：
+
+第一个值：trace-1，它记录了应用的名称，也就是application.properties中spring.application.name参数配置的属性。
+第二个值：c35be1c226c535c4，Spring Cloud Sleuth生成的一个ID，称为Trace ID，它用来标识一条请求链路。一条请求链路中包含一个Trace ID，多个Span ID。
+第三个值：c35be1c226c535c4，Spring Cloud Sleuth生成的另外一个ID，称为Span ID，它表示一个基本的工作单元，比如：发送一个HTTP请求。
+第四个值：false，表示是否要将该信息输出到Zipkin等服务中来收集和展示。
+上面四个值中的Trace ID和Span ID是Spring Cloud Sleuth实现分布式服务跟踪的核心。在一次服务请求链路的调用过程中，会保持并传递同一个Trace ID，从而将整个分布于不同微服务进程中的请求跟踪信息串联起来，以上面输出内容为例，trace-1和trace-2同属于一个前端服务请求来源，所以他们的Trace ID是相同的，处于同一条请求链路中。
+
+
 --------
 ## 模块及占用端口 : 
 eureka-server : 8761
@@ -1619,6 +1733,8 @@ turbine-amqp : 8773 8774
 stream-hello : 8775(producer) 8776(consumer)
 stream-producer :8777
 stream-consumer :8778 8779(测试消费组的概念)
+trace-1: 8780
+trace-2: 8781
  
 
 
