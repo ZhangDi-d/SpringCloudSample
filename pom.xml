@@ -28,6 +28,9 @@
         <module>hystrix-dashboard</module>
         <module>turbine</module>
         <module>turbine-amqp</module>
+        <module>stream-hello</module>
+        <module>stream-producer</module>
+        <module>stream-consumer</module>
     </modules>
 
     <properties>

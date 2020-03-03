@@ -1,0 +1,23 @@
+server:
+  port: 8778  # stream-hello 分别以 8775(producer) ,8776(concumer) 启动两次
+spring:
+  application:
+    name: stream-hello
+  cloud:
+    stream:
+      bindings: # 外部消息传递系统和应用程序之间的桥梁，提供消息的“生产者”和“消费者”（由目标绑定器创建）
+        input:
+          destination: stream-exchange # 指 exchange 的名称
+          binder: localhost_rabbit
+      binders: #目标绑定器，目标指的是 kafka 还是 RabbitMQ，绑定器就是封装了目标中间件的包。
+        localhost_rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: 127.0.0.1
+                port: 5672
+                username: guest
+                password: guest
+
+

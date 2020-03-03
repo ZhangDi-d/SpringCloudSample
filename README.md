@@ -1206,14 +1206,182 @@ public class ErrorFilter extends ZuulFilter {
 ```
 
 更多 请参考 :http://blog.didispace.com/spring-cloud-zuul-exception-3/
+ 
 
 
 ## Spring Cloud Stream 消息驱动
+Spring Cloud Stream 在 Spring Cloud 体系内用于构建高度可扩展的基于事件驱动的微服务，其目的是为了简化消息在 Spring Cloud 应用程序中的开发。
 
+### 概念 
+group : 
+组内只有1个实例消费。如果不设置group，则stream会自动为每个实例创建匿名且独立的group——于是每个实例都会消费。
 
+partition: 
+一个或多个生产者将数据发送到多个消费者，并确保有共同特征标识的数据由同一个消费者处理。默认是对消息进行hashCode，然后根据分区个数取余，所以对于相同的消息，总会落到同一个消费者上。
 
+destination binder:
+与外部消息系统通信的组件，为构造 Binding提供了 2 个方法，分别是 bindConsumer 和 bindProducer ，它们分别用于构造生产者和消费者。Binder使Spring Cloud Stream应用程序可以灵活地连接到中间件，目前spring为kafka、rabbitmq提供binder。
 
+destination binding
+Binding 是连接应用程序跟消息中间件的桥梁，用于消息的消费和生产，由binder创建。  使用@EnableBinding即可定义destination binding
 
+新建模块 stream-hello,(也可以新增 两个模块stream-producer,stream-consumer,一个作为生产者使用,一个座位消费者使用)
+
+涉及模块 :stream-hello,(stream-producer,stream-consumer)
+
+### 使用官方的Sink.class Source.class 简单测试
+
+#### stream-hello  pom.xml
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+</dependency>
+<!--spring-cloud-starter-stream-rabbit 可替换为
+   <dependency>
+     <groupId>org.springframework.cloud</groupId>
+     <artifactId>spring-cloud-stream-binder-rabbit</artifactId>
+   </dependency>
+   -->
+```
+
+#### producer application.yml
+```yaml
+server:
+  port: 8775  # stream-hello 分别以 8775(producer) ,8776(concumer) 启动两次 
+spring:
+  application:
+    name: stream-hello
+  cloud:
+    stream:
+      bindings: # 外部消息传递系统和应用程序之间的桥梁，提供消息的“生产者”和“消费者”（由目标绑定器创建）
+        output:
+          destination: stream-exchange
+          binder: localhost_rabbit  #也可以是其他中间件 如 kafka
+      binders: #目标绑定器，目标指的是 kafka 还是 RabbitMQ，绑定器就是封装了目标中间件的包。
+        localhost_rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: 127.0.0.1
+                port: 5672
+                username: guest
+                password: guest
+```  
+
+#### consumer application.yml
+
+```yaml
+server:
+  port: 8776  # stream-hello 分别以 8775(producer) ,8776(concumer) 启动两次 
+spring:
+  application:
+    name: stream-hello
+  cloud:
+    stream:
+      bindings: # 外部消息传递系统和应用程序之间的桥梁，提供消息的“生产者”和“消费者”（由目标绑定器创建）
+        input:
+          destination: stream-exchange # 指 exchange 的名称
+          binder: localhost_rabbit
+      binders: #目标绑定器，目标指的是 kafka 还是 RabbitMQ，绑定器就是封装了目标中间件的包。
+        localhost_rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: 127.0.0.1
+                port: 5672
+                username: guest
+                password: guest
+```
+
+#### Producer
+```java
+@EnableBinding(Source.class)
+public class Producer {
+    private static Logger logger = LoggerFactory.getLogger(Producer.class);
+    @Autowired
+    @Output(Source.OUTPUT)
+    private MessageChannel channel;
+
+    public void send(String message) {
+        logger.info("send massage begin...............................");
+        channel.send(MessageBuilder.withPayload("Producer send massage:" + message).build());
+        logger.info("send massage end...............................");
+    }
+}
+```
+
+#### Consumer
+
+```java
+//当我们需要为@EnableBinding指定多个接口来绑定消息通道的时候，可以这样定义：@EnableBinding(value = {Sink.class, Source.class})
+//注解用来指定一个或多个定义了@Input或@Output注解的接口，以此实现对消息通道（Channel）的绑定
+@EnableBinding(Sink.class)
+public class Consumer {
+    private static Logger logger = LoggerFactory.getLogger(Consumer.class);
+
+    @StreamListener(Sink.INPUT) //该注解主要定义在方法上，作用是将被修饰的方法注册为消息中间件上数据流的事件监听器，注解中的属性值对应了监听的消息通道名
+    public void receive(Object o) {
+        logger.info("receive message: " + o);
+    }
+}
+
+```
+
+#### 发送信息的类 
+
+可以用手动发送信息的接口:
+```java
+@RestController
+@RequestMapping
+public class ProduceController {
+    private static Logger logger = LoggerFactory.getLogger(ProduceController.class);
+    @Resource
+    private Producer producer;
+
+    @RequestMapping("/send")
+    public void sendMessage(String message) {
+        producer.send("ProduceController send message:" + message);
+    }
+}
+```
+也可以自动发送信息
+```java
+@EnableBinding(Source.class)
+public class TimerProcuer {
+    private static Logger logger = LoggerFactory.getLogger(TimerProcuer.class);
+    private final String format  = "yyyy-MM-dd HH:mm:ss";
+
+    @Bean
+    @InboundChannelAdapter(value = Source.OUTPUT, poller = @Poller(fixedDelay = "5000", maxMessagesPerPoll = "1"))
+    public MessageSource<String> timerMessageSource() {
+        logger.info("TimerProcuer sendMessage begin ..........");
+        return () -> new GenericMessage<>(new SimpleDateFormat(format).format(new Date()));
+    }
+}
+```
+
+#### 测试 
+1. 启动 rabbitMq
+2. 以 8775 ,output 配置段 启动 stream-hello 作为生产者
+3. 以 8776 ,input 配置段 启动 stream-hello 作为消费者
+4. 手动发送消息 `http://localhost:8775/send?message=zhangsan`  ,查看控制台 
+5. 8775 producer 控制台 
+```text
+com.ryze.sample.send.Producer            : send massage begin...............................
+com.ryze.sample.send.Producer            : send massage end...............................
+
+```
+6. 8776 consumer 控制台 :
+```text
+com.ryze.sample.receive.Consumer         : receive message: Producer send massage:ProduceController send message:zhangsan
+```
 
 
 
@@ -1232,6 +1400,7 @@ service-zuul : 8769
 turbine : 8770 8771
 service-hello-consul : 8772
 turbine-amqp : 8773 8774
+stream-hello : 8775(producer) 8776(consumer)
 
 
 ---------------------
@@ -1250,4 +1419,5 @@ Zuul的主要功能是路由转发和过滤器。路由功能是微服务的一�
 ----------------------------------------------------------
 
 **本文 参考 :**
+http://www.itmuch.com/spring-cloud 作者:周立
 http://blog.didispace.com/ 作者 :程序员DD
