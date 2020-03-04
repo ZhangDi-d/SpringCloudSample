@@ -1,6 +1,7 @@
-spring:
-  application:
-    name: trace-1
+#此段配置移动至 bootstrap.properties 中
+#spring:
+#  application:
+#    name: trace-1
 server:
   port: 8780
 eureka:

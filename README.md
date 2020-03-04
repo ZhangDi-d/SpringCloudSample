@@ -1609,7 +1609,7 @@ spring:
 ## 八.Spring Cloud Sleuth 服务链路追踪
 在一个完整的微服务架构项目中，服务之间的调用是很复杂的，Spring Cloud Sleuth可以帮助我们清楚直观的了解每一个服务请求经过了哪些服务，用时多久，谁依赖谁或者被谁依赖。
 
-### quick Start
+### Sleuth quick Start
 
 新建模块 trace-1(可以直接将service-ribbon copy过来 )
 #### trace-1 pom.xml
@@ -1715,6 +1715,181 @@ INFO [trace-2,0f543d7a73490fe4,fe761e5df5da981c,false] 2936 --- [nio-8781-exec-4
 第三个值：c35be1c226c535c4，Spring Cloud Sleuth生成的另外一个ID，称为Span ID，它表示一个基本的工作单元，比如：发送一个HTTP请求。
 第四个值：false，表示是否要将该信息输出到Zipkin等服务中来收集和展示。
 上面四个值中的Trace ID和Span ID是Spring Cloud Sleuth实现分布式服务跟踪的核心。在一次服务请求链路的调用过程中，会保持并传递同一个Trace ID，从而将整个分布于不同微服务进程中的请求跟踪信息串联起来，以上面输出内容为例，trace-1和trace-2同属于一个前端服务请求来源，所以他们的Trace ID是相同的，处于同一条请求链路中。
+
+
+### Sleuth 整合logstash
+
+
+#### trace-1 pom.xml
+新增 logstash 的依赖,此处要注意版本的问题,经过测试 springboot 2.1.2 可以使用 logstash 6.3 版本
+```xml
+<!--整合logstash-->
+<dependency>
+    <groupId>net.logstash.logback</groupId>
+    <artifactId>logstash-logback-encoder</artifactId>
+    <version>6.3</version>
+</dependency>
+```
+
+#### trace-2 配置文件修改
+1. 新增配置文件 bootstrap.properties,将 `spring.application.name=trace-1` 配置段移到 bootstrap.properties 文件中;
+当然也可以将application.yml全部配置复制到bootstrap.properties,然后 删除掉多余的application.yml.
+```properties
+spring.application.name=trace-1
+```
+
+2. 新增 logback-spring.xml
+ 本例使用将日志输出到json文件的做法,所以指定的 appender 为 `RollingFileAppender`,见配置1;
+ 也可以使用`LogstashTcpSocketAppender`将日志内容直接通过Tcp Socket输出到logstash服务端 ,见配置2
+ 
+ **配置1:**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="springAppName" source="spring.application.name"/>
+    <!-- 日志在工程中的输出位置 -->
+    <property name="LOG_FILE" value="${BUILD_FOLDER:-build}/${springAppName}"/>
+    <!-- 控制台的日志输出样式 -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([${springAppName:-},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}]){yellow} %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <!-- 控制台Appender -->
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>utf8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 为logstash输出的json格式的Appender -->
+    <appender name="logstash" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}.json</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                        "severity": "%level",
+                        "service": "${springAppName:-}",
+                        "trace": "%X{X-B3-TraceId:-}",
+                        "span": "%X{X-B3-SpanId:-}",
+                        "exportable": "%X{X-Span-Export:-}",
+                        "pid": "${PID:-}",
+                        "thread": "%thread",
+                        "class": "%logger{40}",
+                        "rest": "%message"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="console"/>
+        <appender-ref ref="logstash"/>
+    </root>
+</configuration>
+```
+
+**配置2**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!--该日志将日志级别不同的log信息保存到不同的文件中 -->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+ 
+    <springProperty scope="context" name="springAppName"source="spring.application.name" />
+ 
+    <!-- 日志在工程中的输出位置 -->
+    <property name="LOG_FILE" value="${BUILD_FOLDER:-build}/${springAppName}" />
+ 
+    <!-- 控制台的日志输出样式 -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}" />
+ 
+    <!-- 控制台输出 -->
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <!-- 日志输出编码 -->
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>utf8</charset>
+        </encoder>
+    </appender>
+ 
+    <!-- 为logstash输出的JSON格式的Appender -->
+    <appender name="logstash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>127.0.0.1:5044</destination>  <!--5044是默认的端口 -->
+        <!-- 日志输出编码 -->
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                        "severity": "%level",
+                        "service": "${springAppName:-}",
+                        "trace": "%X{X-B3-TraceId:-}",
+                        "span": "%X{X-B3-SpanId:-}",
+                        "exportable": "%X{X-Span-Export:-}",
+                        "pid": "${PID:-}",
+                        "thread": "%thread",
+                        "class": "%logger{40}",
+                        "rest": "%message"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+ 
+    <!-- 日志输出级别 -->
+    <root level="INFO">
+        <appender-ref ref="console" />
+        <appender-ref ref="logstash" />
+    </root>
+</configuration>
+```
+
+
+#### trace-2 
+对trace-2 做与trace-1同样的改造处理 ;
+
+#### 测试 
+1. 启动 eureka-server 
+2. 启动 trace-1,trace-2 
+3. 调用接口 `http://localhost:8780/trace-1` ,
+4. 在 项目下生成 build 目录 ,其中产生了 两个json文件 
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200304091748627.png)
+
+5. 格式如下
+```json
+{"@timestamp":"2020-03-04T00:58:40.236Z","severity":"INFO","service":"trace-1","trace":"2b5bb0d8bd6f5e1b","span":"2b5bb0d8bd6f5e1b","exportable":"false","pid":"8740","thread":"http-nio-8780-exec-1","class":"c.ryze.sample.controller.TraceController","rest":"================trace-1 begin================"}
+{"@timestamp":"2020-03-04T00:58:40.497Z","severity":"INFO","service":"trace-1","trace":"2b5bb0d8bd6f5e1b","span":"e2748e57496a2a19","exportable":"false","pid":"8740","thread":"http-nio-8780-exec-1","class":"c.netflix.config.ChainedDynamicProperty","rest":"Flipping property: trace-2.ribbon.ActiveConnectionsLimit to use NEXT property: niws.loadbalancer.availabilityFilteringRule.activeConnectionsLimit = 2147483647"}
+{"@timestamp":"2020-03-04T00:58:40.538Z","severity":"INFO","service":"trace-1","trace":"2b5bb0d8bd6f5e1b","span":"e2748e57496a2a19","exportable":"false","pid":"8740","thread":"http-nio-8780-exec-1","class":"c.n.util.concurrent.ShutdownEnabledTimer","rest":"Shutdown hook installed for: NFLoadBalancer-PingTimer-trace-2"}
+{"@timestamp":"2020-03-04T00:58:40.539Z","severity":"INFO","service":"trace-1","trace":"2b5bb0d8bd6f5e1b","span":"e2748e57496a2a19","exportable":"false","pid":"8740","thread":"http-nio-8780-exec-1","class":"c.netflix.loadbalancer.BaseLoadBalancer","rest":"Client: trace-2 instantiated a LoadBalancer: DynamicServerListLoadBalancer:{NFLoadBalancer:name=trace-2,current list of Servers=[],Load balancer stats=Zone stats: {},Server stats: []}ServerList:null"}
+
+```
+
+
 
 
 --------

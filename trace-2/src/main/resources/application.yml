@@ -1,6 +1,6 @@
-spring:
-  application:
-    name: trace-2
+#spring:
+#  application:
+#    name: trace-2
 server:
   port: 8781
 eureka:
