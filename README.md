@@ -1889,6 +1889,193 @@ spring.application.name=trace-1
 
 ```
 
+### Sleuth 整合zipkin
+
+Zipkin分布式跟踪能帮助我们及时地发现系统中出现的延迟升高问题并找出系统性能瓶颈的根源.
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200304093644582.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+Zipkin由4个核心组件构成：
+
+- Collector：收集器组件，它主要用于处理从外部系统发送过来的跟踪信息，将这些信息转换为Zipkin内部处理的Span格式，以支持后续的存储、分析、展示等功能。
+- Storage：存储组件，它主要对处理收集器接收到的跟踪信息，默认会将这些信息存储在内存中，我们也可以修改此存储策略，通过使用其他存储组件将跟踪信息存储到数据库中。
+- RESTful API：API组件，它主要用来提供外部访问接口。比如给客户端展示跟踪信息，或是外接系统访问以实现监控等。
+- Web UI：UI组件，基于API组件实现的上层应用。通过UI组件用户可以方便而有直观地查询和分析跟踪信息。
+
+
+### zipkin quick start (HTTP方式收集)
+在Spring cloud D版本以后，zipkin-server是通过引入依赖的方式构建的，到了E版本之后，官方就是开始启用了jar的形式来运行zipkin-server。所以我们先到zipkin的官网下载最新的zipkin.jar。
+
+涉及模块:
+- zipkin-server-2.10.1-exec.jar (java-jar启动)
+- eureka-server
+- trace-1
+- trace-2
+
+#### zipkin-server
+下载zipkin-server-2.10.1-exec.jar, 以java -jar方式启动, 访问 `http://localhost:9411` , 出现界面,证明启动成功
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200304101956575.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+#### 修改要跟踪的模块 pom.xml
+在 trace-1,trace-2 pom.xml中新增 依赖:
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-zipkin</artifactId>
+</dependency>
+```
+
+#### 修改要跟踪的模块 application.yml
+在 trace-1,trace-2 application.yml中新增 zipkin配置段:
+```yaml
+spring:
+  sleuth:
+    sampler:
+      probability: 1  #采样频率
+    web:
+      enabled: true
+    zipkin:
+      base-url: http://localhost:9411/  #zipkin服务地址
+```
+
+#### 测试
+1. 启动 eureka-server
+2. 以java -jar zipkin-server-2.10.1-exec.jar 启动 zipkin-server
+3. 启动trace-1 ,trace-2
+4. 访问 `http://localhost:8780/trace-1` ,
+5. 访问 `http://localhost:9411/zipkin` ,点击 FindTraces,界面出现反应
+![zipkin界面](https://img-blog.csdnimg.cn/20200304102941574.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+
+### zipkin quick start (中间件方式收集)
+
+zipkin的原理是服务之间的调用关系会通过HTTP方式上报到zipkin-server端，然后我们再通过zipkin-ui去调用查看追踪服务之间的调用链路。但是这种方式存在一个隐患，如果微服务之间与zipkin服务端网络不通，或调用链路上的网络闪断，http通信收集方式就无法工作。而且zipkin默认是将数据存储在内存中的，如果服务端重启或宕机，就会导致数据丢失。
+
+通过结合Spring Cloud Stream，我们可以非常轻松的让应用客户端将跟踪信息输出到消息中间件上，同时Zipkin服务端从消息中间件上异步地消费这些跟踪信息。
+
+新建模块trace-1-rabbitmq,trace-2-rabbitmq ;
+
+涉及模块:
+- rabbitMq 
+- zipkin-server-2.10.1-exec.jar (启动 java -jar zipkin-server-2.10.1-exec.jar --zipkin.collector.rabbitmq.addresses=127.0.0.1)
+- eureka-server
+- trace-1-rabbitmq
+- trace-2-rabbitmq 
+
+#### trace-1-rabbitmq pom.xml
+核心依赖:
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<!--客户端负载均衡组件依赖-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+<!--服务追踪-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-sleuth</artifactId>
+</dependency>
+<!--整合logstash-->
+<dependency>
+    <groupId>net.logstash.logback</groupId>
+    <artifactId>logstash-logback-encoder</artifactId>
+    <version>6.3</version>
+</dependency>
+<!--整合zipkin-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-zipkin</artifactId>
+</dependency>
+
+<!--rabbitMq 方式-->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-sleuth-stream</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+</dependency>
+```
+
+#### trace-1-rabbitmq application.yml
+
+注释 zipkin.base-url ,添加 rabbitmq注释段 
+
+```yaml
+server:
+  port: 8783
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+spring:
+  sleuth:
+    sampler:
+      probability: 1  #采样频率
+    web:
+      enabled: true
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+# rabbitmq 方式注释http
+#    zipkin:
+#      base-url: http://localhost:9411/  #zipkin服务地址
+```
+
+#### 调用接口 
+```java
+@RestController
+public class TraceController {
+    private final Logger logger = LoggerFactory.getLogger(TraceController.class);
+    @Resource
+    private RestTemplate restTemplate;
+
+    @GetMapping(value = "/trace-1-rabbitmq")
+    public String trace() {
+        logger.info("================trace-1-rabbitmq begin================");
+        return restTemplate.getForEntity("http://trace-2-rabbitmq/trace-2-rabbitmq", String.class).getBody();
+    }
+}
+```
+
+#### trace-2-rabbitmq 同理构造
+
+#### 测试
+-  
+- zipkin-server-2.10.1-exec.jar (启动 java -jar zipkin-server-2.10.1-exec.jar --zipkin.collector.rabbitmq.addresses=127.0.0.1)
+- eureka-server
+- trace-1-rabbitmq
+- trace-2-rabbitmq 
+1. 启动 rabbitMq
+2. 启动 zipkin-server (双击start-rabbitmq.bat) 
+3. 启动 eureka-server 
+4. 启动 trace-1-rabbitmq,trace-2-rabbitmq 
+5 .访问 `http://localhost:8782/trace-1-rabbitmq` ,查看 zipkin .
+![zipkin-rabbitmq](https://img-blog.csdnimg.cn/20200304113117148.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+6. 查看 rabbitmq 
+![zipkin队列](https://img-blog.csdnimg.cn/20200304114106942.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1NoZWxsZXlMaXR0bGVoZXJv,size_16,color_FFFFFF,t_70)
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1910,6 +2097,9 @@ stream-producer :8777
 stream-consumer :8778 8779(测试消费组的概念)
 trace-1: 8780
 trace-2: 8781
+zipkin-server :  9441 (默认)
+trace-1-rabbitmq: 8782
+trace-2-rabbitmq: 8783
  
 
 

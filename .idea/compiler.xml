@@ -15,9 +15,11 @@
         <module name="hrserver" />
         <module name="stream-producer" />
         <module name="demo-main" />
+        <module name="trace-1-rabbitmq" />
         <module name="stream-hello" />
         <module name="sample" />
         <module name="trace-2" />
+        <module name="trace-2-rabbitmq" />
         <module name="service-zuul" />
         <module name="service-ribbon" />
         <module name="service-hello-consul" />
@@ -48,6 +50,7 @@
       <module name="springboot_shiro" target="1.8" />
       <module name="Test1" target="1.5" />
       <module name="Test4" target="1.5" />
+      <module name="zipkin-server" target="1.8" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
@@ -67,9 +70,12 @@
       <module name="stream-hello" options="-parameters" />
       <module name="stream-producer" options="-parameters" />
       <module name="trace-1" options="-parameters" />
+      <module name="trace-1-rabbitmq" options="-parameters" />
       <module name="trace-2" options="-parameters" />
+      <module name="trace-2-rabbitmq" options="-parameters" />
       <module name="turbine" options="-parameters" />
       <module name="turbine-amqp" options="-parameters" />
+      <module name="zipkin-server" options="-parameters" />
     </option>
   </component>
 </project>

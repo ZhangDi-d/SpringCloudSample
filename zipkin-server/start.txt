@@ -1,0 +1,18 @@
+HTTP方式 启动方式一:
+    java -jar zipkin-server-2.10.1-exec.jar
+HTTP方式 正常启动方式二:
+    双击 start.bat启动
+
+
+RabbitMQ中间件 启动方式一:
+    #不指定 用户名密码 ,默认都是guest
+    java -jar zipkin-server-2.10.1-exec.jar --zipkin.collector.rabbitmq.addresses=localhost
+
+    #指定用户名密码:
+    java -jar zipkin-server-2.17.0-exec.jar --zipkin.collector.rabbitmq.addresses=localhost --zipkin.collector.rabbitmq.username=guest --zipkin.collector.rabbitmq.password=guest
+
+RabbitMQ中间件 启动方式二:
+    双击 start-rabbitmq.bat启动
+
+
+

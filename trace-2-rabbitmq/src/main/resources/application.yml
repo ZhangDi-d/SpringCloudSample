@@ -1,0 +1,21 @@
+server:
+  port: 8783
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+spring:
+  sleuth:
+    sampler:
+      probability: 1  #采样频率
+    web:
+      enabled: true
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+# rabbitmq 方式注释http
+#    zipkin:
+#      base-url: http://localhost:9411/  #zipkin服务地址
+

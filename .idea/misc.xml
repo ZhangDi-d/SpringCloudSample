@@ -34,6 +34,7 @@
         <option value="$USER_HOME$/Desktop/source/CpicAutoService/pom.xml" />
         <option value="$PROJECT_DIR$/../SSMP/pom.xml" />
         <option value="$PROJECT_DIR$/hystrix-turbine/pom.xml" />
+        <option value="$PROJECT_DIR$/zipkin-server/pom.xml" />
       </set>
     </option>
   </component>

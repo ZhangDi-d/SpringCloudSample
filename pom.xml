@@ -33,6 +33,8 @@
         <module>stream-consumer</module>
         <module>trace-1</module>
         <module>trace-2</module>
+        <module>trace-1-rabbitmq</module>
+        <module>trace-2-rabbitmq</module>
     </modules>
 
     <properties>
