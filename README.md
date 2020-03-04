@@ -2069,13 +2069,22 @@ public class TraceController {
 
 
 
+### Sleuth+zipkin 收集原理
+- Span：它代表了一个基础的工作单元。我们以HTTP请求为例，一次完整的请求过程在客户端和服务端都会产生多个不同的事件状态（比如下面所说的四个核心Annotation所标识的不同阶段），
+对于同一个请求来说，它们属于一个工作单元，所以同一HTTP请求过程中的四个Annotation同属于一个Span。每一个不同的工作单元都通过一个64位的ID来唯一标识，称为Span ID。
+另外，在工作单元中还存储了一个用来串联其他工作单元的ID，它也通过一个64位的ID来唯一标识，称为Trace ID。**在同一条请求链路中的不同工作单元都会有不同的Span ID，但是它们的Trace ID是相同的，所以通过Trace ID可以将一次请求中依赖的所有依赖请求串联起来形成请求链路。**
+除了这两个核心的ID之外，Span中还存储了一些其他信息，比如：描述信息、事件时间戳、Annotation的键值对属性、上一级工作单元的Span ID等。
 
+- Trace：它是由一系列具有相同Trace ID的Span串联形成的一个树状结构。在复杂的分布式系统中，每一个外部请求通常都会产生一个复杂的树状结构的Trace。
 
+- Annotation：它用来及时地记录一个事件的存在。我们可以把Annotation理解为一个包含有时间戳的事件标签，对于一个HTTP请求来说，在Sleuth中定义了下面四个核心Annotation来标识一个请求的开始和结束：
 
+-- cs（Client Send）：该Annotation用来记录客户端发起了一个请求，同时它也标识了这个HTTP请求的开始。
+-- sr（Server Received）：该Annotation用来记录服务端接收到了请求，并准备开始处理它。通过计算sr与cs两个Annotation的时间戳之差，我们可以得到当前HTTP请求的网络延迟。
+-- ss（Server Send）：该Annotation用来记录服务端处理完请求后准备发送请求响应信息。通过计算ss与sr两个Annotation的时间戳之差，我们可以得到当前服务端处理请求的时间消耗。
+-- cr（Client Received）：该Annotation用来记录客户端接收到服务端的回复，同时它也标识了这个HTTP请求的结束。通过计算cr与cs两个Annotation的时间戳之差，我们可以得到该HTTP请求从客户端发起开始到接收服务端响应的总时间消耗。
 
-
-
-
+- BinaryAnnotation：它用来对跟踪信息添加一些额外的补充说明，一般以键值对方式出现。比如：在记录HTTP请求接收后执行具体业务逻辑时，此时并没有默认的Annotation来标识该事件状态，但是有BinaryAnnotation信息对其进行补充。
 
 
 
@@ -2101,21 +2110,6 @@ zipkin-server :  9441 (默认)
 trace-1-rabbitmq: 8782
 trace-2-rabbitmq: 8783
  
-
-
-
----------------------
-拾遗:
-1.ribbon中使用断路器:
-
-1.@EnableHystrix (启动类上加)  
-2.@HystrixCommand(fallbackMethod = "失败时调用方法")(具体方法上加)
-
-2.feign中使用断路器:
-Feign是自带断路器的，在D版本的Spring Cloud之后，它没有默认打开.打开:feign.hystrix.enabled=true
-
-Zuul的主要功能是路由转发和过滤器。路由功能是微服务的一部分，比如／api/user转发到到user服务，/api/shop转发到到shop服务。zuul默认和Ribbon结合实现了负载均衡的功能。
-
 
 ----------------------------------------------------------
 
