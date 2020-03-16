@@ -35,6 +35,7 @@
         <module>trace-2</module>
         <module>trace-1-rabbitmq</module>
         <module>trace-2-rabbitmq</module>
+        <module>service-gateway</module>
     </modules>
 
     <properties>

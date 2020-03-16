@@ -2088,6 +2088,336 @@ public class TraceController {
 
 
 
+
+## Spring Cloud Gateway
+
+新建模块 service-gateway
+
+### gateway quick start 
+#### 1. pom.xml
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-gateway</artifactId>
+    </dependency>
+</dependencies>
+```
+
+#### application.yml
+```yaml
+server:
+  port: 8784
+spring:
+  application:
+    name: service-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true #开启小写验证，默认feign根据服务名查找都是用的全大写
+      routes:
+        - id: path-route
+          uri: http://www.baidu.com
+          predicates:
+            - Path=/baidu/**
+          filters:
+            - StripPrefix=1
+
+
+```
+
+
+#### 3.启动类
+```java
+@SpringBootApplication
+public class ServiceGatewayApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ServiceGatewayApplication.class, args);
+    }
+}
+```
+
+#### 4. 测试
+访问 `http://localhost:8784/baidu` ,进入百度页面.
+
+
+### gateway与eureka整合
+#### 1.pom.xml
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-gateway</artifactId>
+</dependency>
+```
+
+#### 2.application.yml
+增加eureka 和 path的配置
+
+```yaml
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+server:
+  port: 8784
+spring:
+  application:
+    name: service-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true #开启小写验证，默认feign根据服务名查找都是用的全大写
+      routes:
+        - id: service-ribbon
+          uri: lb://service-ribbon
+          predicates:
+            - Path=/ribbon/**
+          filters:
+            - StripPrefix=1 # 去除掉前面1个前缀之后 
+```
+注意 :  - StripPrefix=1 是将/ribbon/**中的/ribbon截断路由到service-ribbon 的,
+举例子: 
+如果 - StripPrefix=1  ,则 访问 `http://localhost:8784/ribbon/hello?name=lisi` 会 路由到 `http://localhost:8764/hello?name=zhangsan`;
+如果 - StripPrefix=2  ,则 需访问 `http://localhost:8784/ribbon/1/hello?name=lisi` 路由到service-ribbon 的/hello 接口
+
+ 
+```text
+- id: service-ribbon
+  uri: lb://service-ribbon
+  predicates:
+    - Path=/ribbon/**
+  filters:
+    - StripPrefix=1 # 去除掉前面1个前缀之后
+```
+
+
+
+
+#### 3.启动类
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+public class ServiceGatewayApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ServiceGatewayApplication.class, args);
+    }
+}
+```
+
+#### 4. 测试
+启动
+- eureka-server
+- service-hello
+- service-ribbon
+- service-gateway
+
+访问 `http://localhost:8784/ribbon/hello?name=lisi` , 页面 如下, ok
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200316131722670.png)
+
+
+### 路由断言工厂
+
+#### 1. Path路由断言工厂
+
+Path路由断言工厂接收一个参数，根据Path定义好的规则来判断访问的URI是否匹配。
+
+`/ribbon/**` 将匹配 以 /ribbon/ 开头的多级路由;
+
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: service-ribbon
+          uri: lb://service-ribbon
+          predicates:
+            - Path=/ribbon/**
+          filters:
+            - StripPrefix=1 
+```
+
+
+#### Query路由断言工厂
+
+Query路由断言工厂接收两个参数，一个必需的参数和一个可选的正则表达式。
+
+访问 `http://localhost:8784//?foo=zha` ,即可路由到`http://www.baidu.com`;
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: service-ribbon
+          uri: http://www.baidu.com
+          predicates:
+            - Query=foo, zh.
+```
+
+#### Method路由断言工厂
+Method路由断言工厂接收一个参数，即要匹配的HTTP方法。
+
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: service-ribbon
+          uri: http://www.baidu.com
+          predicates:
+            - Method=GET
+```
+
+#### Header路由断言工厂
+Header路由断言工厂接收两个参数，分别是请求头名称和正则表达式。 
+
+如果请求中带有请求头名为x-request-id，其值与\d+正则表达式匹配（值为一个或多个数字），则此路由匹配。
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: service-ribbon
+          uri: http://www.baidu.com
+          predicates:
+            - Hearder=x-request-id, \d+
+```
+
+#### 自定义路由断言工厂
+
+自定义路由断言工厂需要继承AbstractRoutePredicateFactory类，重写apply方法的逻辑。
+
+### Spring Cloud Gateway过滤器工厂
+
+Spring CloudGateway的路由过滤器允许以某种方式修改传入的HTTP请求或输出的HTTP响应，只作用于特定的路由。
+
+#### 1．AddRequestHeader过滤器工厂
+ 此过滤器作用为 添加请求头。
+
+符合规则匹配成功的请求，将添加X-Request-Foo:bar请求头，将其传递到后端服务中，后方服务可以直接获取请求头信息。
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: add_request_header-route
+          uri: http://www.baidu.com
+          filters:
+          - AddRequestHeader=x-request-id, Bar
+
+```
+
+#### RemoveRequestHeader过滤器工厂
+这个 过滤器工厂的作用 移除请求头
+
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: remove_request_header-route
+          uri: http://www.baidu.com
+          filters:
+          - RemoveRequestHeader=x-request-id
+
+```
+
+#### SetStatus过滤器工厂
+
+SetStatus过滤器工厂接收单个状态，用于设置Http请求的响应码。它必须是有效的SpringHttpstatus(org.springframework.http.HttpStatus)。它可以是整数值404或枚举类型NOT_FOUND。
+
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: remove_request_header-route
+          uri: http://www.baidu.com
+          filters:
+          - SetStatus=401
+```
+
+#### RedirectTo过滤器工厂
+RedirectTo过滤器工厂用于重定向操作，比如我们需要重定向到google。
+
+```xml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: remove_request_header-route
+          uri: http://www.baidu.com
+          filters:
+          - RedirectTo=302,http://www.google.com
+```
+
+#### 自定义Spring Cloud Gateway过滤器工厂
+
+自定义Spring Cloud Gateway过滤器工厂需要继承AbstractGatewayFilterFactory类，重写apply方法的逻辑。命名需要以GatewayFilterFactory结尾，比如CheckAuthGatewayFilterFactory，那么在使用的时候CheckAuth就是这个过滤器工厂的名称。
+
+
+### 全局过滤器
+
+全局过滤器作用于所有的路由，不需要单独配置，我们可以用它来实现很多统一化处理的业务需求，比如权限认证、IP访问限制等。
+
+#### 栗子:IP过滤器
+```java
+@Component
+public class IpFilter implements GlobalFilter, Ordered {
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        HttpHeaders headers = exchange.getRequest().getHeaders();
+        // 测试使用
+        if (getIp(headers).equals("127.0.0.1")) {
+            ServerHttpResponse response = exchange.getResponse();
+            JSONObject jsonObject  = new JSONObject();
+            jsonObject.put("code",401);
+            jsonObject.put("message","非法请求");
+            byte[] datas = jsonObject.toJSONString().getBytes(StandardCharsets.UTF_8);
+            DataBuffer buffer = response.bufferFactory().wrap(datas);
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            response.getHeaders().add("Content-Type", "application/json;charset=UTF-8");
+            return response.writeWith(Mono.just(buffer));
+        }
+        return chain.filter(exchange);
+    }
+
+    @Override
+    public int getOrder() {
+        return 0;
+    }
+    // 这边从请求头中获取用户的实际IP,根据Nginx转发的请求头获取
+    private String getIp(HttpHeaders headers) {
+        return "127.0.0.1";
+    }
+}
+```
+ 
+ 访问 `http://localhost:8784/ribbon/hello?name=lisi` , 提示 `{"code":401,"message":"非法请求"}` ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --------
 ## 模块及占用端口 : 
 eureka-server : 8761
@@ -2109,10 +2439,12 @@ trace-2: 8781
 zipkin-server :  9441 (默认)
 trace-1-rabbitmq: 8782
 trace-2-rabbitmq: 8783
+service-gateway: 8784
  
 
 ----------------------------------------------------------
 
 **本文 参考 :**
-http://www.itmuch.com/spring-cloud 作者:周立
 http://blog.didispace.com/ 作者 :程序员DD
+http://www.itmuch.com/spring-cloud 作者:周立
+SpringCloud微服务:入门,实战与进阶 作者:尹吉欢
