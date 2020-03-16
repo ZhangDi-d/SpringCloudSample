@@ -25,8 +25,8 @@ public class IpFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         HttpHeaders headers = exchange.getRequest().getHeaders();
-        // 测试使用
-        if (getIp(headers).equals("127.0.0.1")) {
+        // 测试使用,测试限流时,放开这段拦截
+        if (getIp(headers).equals("127.0.0.2")) {
             ServerHttpResponse response = exchange.getResponse();
             JSONObject jsonObject  = new JSONObject();
             jsonObject.put("code",401);

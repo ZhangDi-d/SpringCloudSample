@@ -7,6 +7,10 @@ server:
 spring:
   application:
     name: service-gateway
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
   cloud:
     gateway:
       discovery:
@@ -14,12 +18,24 @@ spring:
           enabled: true
           lower-case-service-id: true #开启小写验证，默认feign根据服务名查找都是用的全大写
       routes:
-        - id: service-ribbon
-          uri: lb://service-ribbon
+        # 2. 路由
+#        - id: service-ribbon
+#          uri: lb://service-ribbon
+#          predicates:
+#            - Path=/ribbon/**
+#          filters:
+#            - StripPrefix=1 # 去除掉前面1个前缀之后
+        #限流
+        - id: limit_route
+          uri: https://www.baidu.com/
           predicates:
-            - Path=/ribbon/**
+            - After=2017-01-20T17:42:47.789-07:00[America/Denver]
           filters:
-            - StripPrefix=1 # 去除掉前面1个前缀之后
+            - name: RequestRateLimiter
+              args:
+                key-resolver: '#{@hostAddrKeyResolver}'
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 3
         # 1.qucik start
 #        - id: path-route
 #          uri: http://www.baidu.com
