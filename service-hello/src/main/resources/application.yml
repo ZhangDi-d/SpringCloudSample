@@ -4,7 +4,10 @@ server:
 spring:
   application:
     name: service-hello #服务与服务之间相互调用一般都是根据这个name
-
+  redis:
+    host: 127.0.0.1
+    database: 0
+    port: 6379
 eureka:
   client:
     serviceUrl:
